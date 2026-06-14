@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { Mail, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -8,9 +8,9 @@ import { formatDateTime } from '@/lib/utils'
 import type { EmailLog } from '@/types'
 
 export default async function AdminEmailLogsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const supabase = createAdminClient()
+  
+  
 
   const { data: logs } = await supabase
     .from('email_logs')

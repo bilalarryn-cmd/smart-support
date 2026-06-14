@@ -1,7 +1,8 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { TicketCheck, Clock, AlertCircle, CheckCircle, Plus, ArrowRight } from 'lucide-react'
+import { TicketCheck, Clock, AlertCircle, CheckCircle, Plus, ArrowRight, Inbox } from 'lucide-react'
 import { StatCard } from '@/components/shared/stat-card'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
@@ -10,24 +11,44 @@ import { TicketStatusBadge, TicketPriorityBadge } from '@/components/shared/tick
 import { formatRelativeTime } from '@/lib/utils'
 import type { Ticket } from '@/types'
 
-export default async function CustomerDashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export default function CustomerDashboardPage() {
+  const [tickets, setTickets] = useState<(Ticket & { category?: { name: string; color: string } })[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const { data: tickets } = await supabase
-    .from('tickets')
-    .select('*, category:ticket_categories(name, color)')
-    .eq('customer_id', user.id)
-    .order('created_at', { ascending: false })
+  const fetchTickets = useCallback(async () => {
+    const res = await fetch('/api/tickets?limit=100')
+    if (!res.ok) { setLoading(false); return }
+    const json = await res.json()
+    setTickets(json.data ?? [])
+    setLoading(false)
+  }, [])
 
-  const all = tickets ?? []
-  const open = all.filter(t => ['new', 'open'].includes(t.status))
+  useEffect(() => {
+    fetchTickets()
+    // Poll every 30 seconds so admin changes show up automatically
+    const interval = setInterval(fetchTickets, 30000)
+    return () => clearInterval(interval)
+  }, [fetchTickets])
+
+  const all = tickets
+  const newTickets = all.filter(t => t.status === 'new')
+  const open = all.filter(t => t.status === 'open')
   const waiting = all.filter(t => t.status === 'waiting_for_customer')
   const resolved = all.filter(t => t.status === 'resolved')
-  const closed = all.filter(t => t.status === 'closed')
-
   const recent = all.slice(0, 5)
+
+  if (loading) {
+    return (
+      <div className="animate-slide-in">
+        <PageHeader title="My Dashboard" subtitle="Track and manage your support tickets" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="animate-slide-in">
@@ -47,7 +68,8 @@ export default async function CustomerDashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard title="Total Tickets" value={all.length} icon={TicketCheck} color="blue" />
-        <StatCard title="Open" value={open.length} icon={Clock} color="amber" />
+        <StatCard title="New" value={newTickets.length} icon={Inbox} color="amber" />
+        <StatCard title="In Progress" value={open.length} icon={Clock} color="green" />
         <StatCard title="Waiting" value={waiting.length} icon={AlertCircle} color="red" />
         <StatCard title="Resolved" value={resolved.length} icon={CheckCircle} color="green" />
       </div>
@@ -81,7 +103,7 @@ export default async function CustomerDashboardPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {recent.map((ticket: Ticket & { category?: { name: string; color: string } }) => (
+              {recent.map((ticket) => (
                 <Link
                   key={ticket.id}
                   href={`/tickets/${ticket.id}`}

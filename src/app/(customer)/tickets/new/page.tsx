@@ -14,9 +14,27 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Upload, X, FileText, Image as ImageIcon, File } from 'lucide-react'
+import { Upload, X, FileText, Image as ImageIcon, File, Loader2 } from 'lucide-react'
 import { COMMON_COUNTRIES } from '@/lib/countries/api'
 import type { TicketCategory } from '@/types'
+
+const COUNTRY_CATEGORIES: Record<string, string[]> = {
+  US: ['Technical Support', 'Billing & Payments', 'Account Verification', 'API Support', 'General Inquiry'],
+  GB: ['Technical Support', 'Billing & Payments', 'Account Verification', 'General Inquiry'],
+  CA: ['Technical Support', 'Billing & Payments', 'Account Verification', 'General Inquiry'],
+  AU: ['Technical Support', 'Billing & Payments', 'Account Verification', 'General Inquiry'],
+  DE: ['Technical Support', 'Account Verification', 'Billing & Payments', 'General Inquiry'],
+  FR: ['Technical Support', 'Account Verification', 'Billing & Payments', 'General Inquiry'],
+  IN: ['OTP / SMS Issues', 'Account Verification', 'Technical Support', 'Payment Issues', 'General Inquiry'],
+  PK: ['OTP / SMS Issues', 'Account Verification', 'Technical Support', 'Payment Issues', 'General Inquiry'],
+  JP: ['Technical Support', 'Account Verification', 'Billing & Payments', 'General Inquiry'],
+  BR: ['Payment Issues', 'Technical Support', 'Account Verification', 'General Inquiry'],
+  MX: ['Payment Issues', 'Technical Support', 'Account Verification', 'General Inquiry'],
+  NG: ['Payment Issues', 'OTP / SMS Issues', 'Account Verification', 'Technical Support'],
+  ZA: ['Payment Issues', 'Technical Support', 'Account Verification', 'General Inquiry'],
+  SG: ['API Support', 'Technical Support', 'Billing & Payments', 'Account Verification'],
+  AE: ['Account Verification', 'OTP / SMS Issues', 'Technical Support', 'Billing & Payments'],
+}
 import { formatFileSize, getMimeIcon } from '@/lib/utils'
 
 const schema = z.object({
@@ -35,8 +53,11 @@ interface UploadedFile {
 
 export default function CreateTicketPage() {
   const [categories, setCategories] = useState<TicketCategory[]>([])
+  const [allCategories, setAllCategories] = useState<TicketCategory[]>([])
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState(false)
+  const [countryInfo, setCountryInfo] = useState<{ flag_emoji: string; name: string; currency_code?: string; currency_name?: string; calling_code?: string; region?: string; subregion?: string; language?: string } | null>(null)
+  const [countryLoading, setCountryLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -46,10 +67,49 @@ export default function CreateTicketPage() {
   })
 
   useEffect(() => {
-    supabase.from('ticket_categories').select('*').eq('is_active', true).then(({ data }) => {
-      setCategories((data ?? []) as TicketCategory[])
+    fetch('/api/categories').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) {
+        const all = data as TicketCategory[]
+        setAllCategories(all)
+        // Apply current country filter immediately after load
+        const currentCountry = watch('country_code')
+        const allowed = currentCountry ? COUNTRY_CATEGORIES[currentCountry] : null
+        if (allowed) {
+          const ordered = allowed.map(name => all.find(c => c.name === name)).filter(Boolean) as TicketCategory[]
+          setCategories(ordered.length > 0 ? ordered : all)
+        } else {
+          setCategories(all)
+        }
+      }
     })
   }, [])
+
+  const handleCountryChange = async (code: string) => {
+    setValue('country_code', code)
+    setValue('category_id', '')
+
+    // Filter categories based on country
+    const allowed = COUNTRY_CATEGORIES[code]
+    if (allowed) {
+      const ordered = allowed
+        .map(name => allCategories.find(c => c.name === name))
+        .filter(Boolean) as TicketCategory[]
+      setCategories(ordered.length > 0 ? ordered : allCategories)
+    } else {
+      setCategories(allCategories)
+    }
+
+    setCountryLoading(true)
+    try {
+      const res = await fetch(`/api/countries/${code}`)
+      if (res.ok) setCountryInfo(await res.json())
+      else setCountryInfo(null)
+    } catch {
+      setCountryInfo(null)
+    } finally {
+      setCountryLoading(false)
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = Array.from(e.target.files ?? [])
@@ -79,40 +139,26 @@ export default function CreateTicketPage() {
   }
 
   const onSubmit = async (data: FormData) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { toast.error('Not authenticated'); return }
-
-    // Get SLA rule
-    const { data: slaRule } = await supabase
-      .from('sla_rules')
-      .select('resolution_hours')
-      .eq('priority', data.priority)
-      .eq('is_active', true)
-      .single()
-
-    const slaDueAt = slaRule
-      ? new Date(Date.now() + slaRule.resolution_hours * 60 * 60 * 1000).toISOString()
-      : null
-
-    const { data: ticket, error } = await supabase
-      .from('tickets')
-      .insert({
+    const res = await fetch('/api/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         subject: data.subject,
         description: data.description,
         priority: data.priority,
         category_id: data.category_id,
         country_code: data.country_code,
-        customer_id: user.id,
-        status: 'new',
-        sla_due_at: slaDueAt,
-      })
-      .select()
-      .single()
+      }),
+    })
 
-    if (error || !ticket) {
-      toast.error('Failed to create ticket. Please try again.')
+    const ticket = await res.json()
+    if (!res.ok) {
+      toast.error(ticket.error ?? 'Failed to create ticket. Please try again.')
       return
     }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Not authenticated'); return }
 
     // Upload attachments
     if (files.length > 0) {
@@ -221,9 +267,9 @@ export default function CreateTicketPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label>Country *</Label>
-                  <Select value={countryCode} onValueChange={v => setValue('country_code', v)}>
+                  <Select value={countryCode} onValueChange={handleCountryChange}>
                     <SelectTrigger className={errors.country_code ? 'border-red-300' : ''}>
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
@@ -236,6 +282,46 @@ export default function CreateTicketPage() {
                     </SelectContent>
                   </Select>
                   {errors.country_code && <p className="text-xs text-red-600">{errors.country_code.message}</p>}
+
+                  {countryLoading && (
+                    <div className="flex items-center gap-2 text-sm text-slate-400 py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading country info…
+                    </div>
+                  )}
+                  {!countryLoading && countryInfo && (
+                    <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-2 mt-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-2xl">{countryInfo.flag_emoji}</span>
+                        <span className="font-semibold text-slate-800">{countryInfo.name}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                        {countryInfo.currency_code && (
+                          <div>
+                            <span className="text-slate-400 text-xs">Currency</span>
+                            <p className="font-medium text-slate-700">{countryInfo.currency_code} — {countryInfo.currency_name}</p>
+                          </div>
+                        )}
+                        {countryInfo.calling_code && (
+                          <div>
+                            <span className="text-slate-400 text-xs">Calling Code</span>
+                            <p className="font-medium text-slate-700">{countryInfo.calling_code}</p>
+                          </div>
+                        )}
+                        {countryInfo.region && (
+                          <div>
+                            <span className="text-slate-400 text-xs">Region</span>
+                            <p className="font-medium text-slate-700">{countryInfo.region}{countryInfo.subregion ? ` — ${countryInfo.subregion}` : ''}</p>
+                          </div>
+                        )}
+                        {countryInfo.language && (
+                          <div>
+                            <span className="text-slate-400 text-xs">Language</span>
+                            <p className="font-medium text-slate-700">{countryInfo.language}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

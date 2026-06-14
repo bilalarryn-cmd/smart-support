@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { User, Phone, Globe, Loader2 } from 'lucide-react'
+import { User, Phone, Globe, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,9 @@ export default function ProfilePage() {
   const [userEmail, setUserEmail] = useState('')
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null)
   const [countryLoading, setCountryLoading] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteInput, setDeleteInput] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const supabase = createClient()
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -93,6 +96,21 @@ export default function ProfilePage() {
     if (error) { toast.error('Failed to update profile'); return }
     toast.success('Profile updated successfully!')
     setProfile(prev => prev ? { ...prev, ...data } as UserProfile : prev)
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteInput !== 'DELETE') return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/account', { method: 'DELETE' })
+      if (!res.ok) { toast.error('Failed to delete account'); return }
+      await supabase.auth.signOut()
+      window.location.href = '/login'
+    } catch {
+      toast.error('Something went wrong')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const countryCode = watch('country_code')
@@ -213,6 +231,64 @@ export default function ProfilePage() {
                 <Button type="submit" loading={isSubmitting}>Save Changes</Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+        {/* Danger Zone */}
+        <Card className="border-red-200">
+          <CardHeader>
+            <CardTitle className="text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Danger Zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!showDeleteConfirm ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">Delete Account</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Permanently delete your account and all your data. This cannot be undone.</p>
+                </div>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Account
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                  <p className="text-sm text-red-700 font-medium">This will permanently delete your account, all your tickets and data.</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600 mb-2">Type <span className="font-bold text-slate-800">DELETE</span> to confirm:</p>
+                  <input
+                    type="text"
+                    value={deleteInput}
+                    onChange={e => setDeleteInput(e.target.value)}
+                    placeholder="Type DELETE"
+                    className="w-full px-3 py-2 text-sm border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteInput('') }}
+                    className="flex-1 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteInput !== 'DELETE' || deleting}
+                    className="flex-1 py-2 text-sm font-semibold text-white rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {deleting ? 'Deleting…' : 'Delete My Account'}
+                  </button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

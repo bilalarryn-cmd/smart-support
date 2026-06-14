@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { TicketCheck, Users, AlertCircle, CheckCircle, Clock, Mail, Cpu, ArrowRight, Plus, Activity, Timer } from 'lucide-react'
@@ -11,9 +11,9 @@ import { formatRelativeTime } from '@/lib/utils'
 import type { Ticket, SlaRule } from '@/types'
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const supabase = createAdminClient()
+  
+  
 
   const [ticketsRes, usersRes, slaRulesRes, emailRes, autoRes, auditRes] = await Promise.all([
     supabase.from('tickets').select('*, customer:user_profiles!customer_id(full_name), category:ticket_categories(name, color)').order('created_at', { ascending: false }),

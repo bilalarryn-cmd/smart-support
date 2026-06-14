@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Sidebar } from '@/components/shared/sidebar'
 import { Topbar } from '@/components/shared/topbar'
 import type { UserProfile } from '@/types'
@@ -10,14 +11,16 @@ export default async function CustomerLayout({ children }: { children: React.Rea
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const role = (user.user_metadata?.role as string) ?? 'customer'
+  if (role === 'admin') redirect('/admin/dashboard')
+  if (role === 'agent') redirect('/agent/dashboard')
+
+  const admin = createAdminClient()
+  const { data: profile } = await admin
     .from('user_profiles')
     .select('*')
     .eq('id', user.id)
     .single()
-
-  if (profile?.role === 'admin') redirect('/admin/dashboard')
-  if (profile?.role === 'agent') redirect('/agent/dashboard')
 
   return (
     <div className="flex h-screen bg-slate-50">

@@ -30,7 +30,7 @@ export default function CustomerTicketDetailPage() {
   const [attachments, setAttachments] = useState<TicketAttachment[]>([])
   const [slaRule, setSlaRule] = useState<SlaRule | null>(null)
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null)
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ id: string; full_name?: string; avatar_url?: string } | null>(null)
   const [replyText, setReplyText] = useState('')
   const [replyFiles, setReplyFiles] = useState<File[]>([])
   const [sending, setSending] = useState(false)
@@ -43,34 +43,51 @@ export default function CustomerTicketDetailPage() {
 
   const loadTicket = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { router.push('/login'); return }
 
-    const [profileRes, ticketRes] = await Promise.all([
-      supabase.from('user_profiles').select('*').eq('id', user.id).single(),
-      supabase.from('tickets').select('*, category:ticket_categories(name, color)').eq('id', id).eq('customer_id', user.id).single(),
+    setCurrentUser({ id: user.id, full_name: user.user_metadata?.full_name, avatar_url: user.user_metadata?.avatar_url })
+
+    // Use API endpoint (uses createAdminClient — bypasses RLS)
+    const [ticketRes, msgRes, attRes] = await Promise.all([
+      fetch(`/api/tickets/${id}`),
+      fetch(`/api/tickets/${id}/messages`),
+      fetch(`/api/tickets/${id}/attachments`),
     ])
 
-    if (!ticketRes.data) { router.push('/tickets'); return }
+    if (!ticketRes.ok) { router.push('/tickets'); return }
 
-    setCurrentUser(profileRes.data as UserProfile)
-    setTicket(ticketRes.data as Ticket & { category?: { name: string; color: string } })
+    const ticketData = await ticketRes.json()
+    // Security: only show customer's own ticket
+    if (ticketData.customer_id !== user.id) { router.push('/tickets'); return }
 
-    const [msgRes, attRes, slaRes] = await Promise.all([
-      supabase.from('ticket_messages').select('*, sender:user_profiles(*)').eq('ticket_id', id).eq('is_internal', false).order('created_at'),
-      supabase.from('ticket_attachments').select('*').eq('ticket_id', id).order('created_at'),
-      supabase.from('sla_rules').select('*').eq('priority', ticketRes.data.priority).eq('is_active', true).single(),
-    ])
+    setTicket(ticketData)
 
-    setMessages((msgRes.data ?? []) as (TicketMessage & { sender?: UserProfile })[])
-    setAttachments((attRes.data ?? []) as TicketAttachment[])
-    setSlaRule(slaRes.data as SlaRule | null)
-
-    if (ticketRes.data.country_code) {
-      const { data: country } = await supabase.from('country_info_cache').select('*').eq('country_code', ticketRes.data.country_code).single()
-      setCountryInfo(country as CountryInfo | null)
+    if (msgRes.ok) {
+      const msgData = await msgRes.json()
+      setMessages(msgData ?? [])
     }
 
+    if (attRes.ok) {
+      const attData = await attRes.json()
+      setAttachments(attData ?? [])
+    }
+
+    // Show page immediately — don't block on slow external APIs
     setLoading(false)
+
+    // SLA rule (background)
+    fetch(`/api/sla?priority=${ticketData.priority}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSlaRule(d) })
+      .catch(() => null)
+
+    // Country info (background — external API can be slow)
+    if (ticketData.country_code) {
+      fetch(`/api/countries/${ticketData.country_code}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setCountryInfo(d) })
+        .catch(() => null)
+    }
   }, [id])
 
   useEffect(() => { loadTicket() }, [loadTicket])
@@ -79,48 +96,53 @@ export default function CustomerTicketDetailPage() {
     if (!replyText.trim() || !ticket || !currentUser) return
     setSending(true)
 
-    const { data: message, error } = await supabase.from('ticket_messages').insert({
-      ticket_id: ticket.id,
-      sender_id: currentUser.id,
-      content: replyText,
-      is_internal: false,
-    }).select('*, sender:user_profiles(*)').single()
+    const res = await fetch(`/api/tickets/${ticket.id}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: replyText, is_internal: false }),
+    })
 
-    if (error) { toast.error('Failed to send reply'); setSending(false); return }
+    if (!res.ok) { toast.error('Failed to send reply'); setSending(false); return }
+    const message = await res.json()
 
     // Update ticket status if waiting
     if (ticket.status === 'waiting_for_customer') {
-      await supabase.from('tickets').update({ status: 'open' }).eq('id', ticket.id)
+      await fetch(`/api/tickets/${ticket.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'open' }),
+      })
       setTicket(prev => prev ? { ...prev, status: 'open' } : prev)
     }
 
-    // Upload files
+    // Upload files via Supabase storage (storage doesn't use RLS for uploads)
     if (replyFiles.length > 0) {
       for (const file of replyFiles) {
         const path = `tickets/${ticket.id}/${Date.now()}-${file.name}`
         const { data: up } = await supabase.storage.from('attachments').upload(path, file)
         if (up) {
           const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(up.path)
-          await supabase.from('ticket_attachments').insert({
-            ticket_id: ticket.id,
-            message_id: message.id,
-            uploaded_by: currentUser.id,
-            file_name: file.name,
-            file_url: publicUrl,
-            file_size: file.size,
-            mime_type: file.type,
+          await fetch(`/api/tickets/${ticket.id}/attachments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message_id: message.id,
+              file_name: file.name,
+              file_url: publicUrl,
+              file_size: file.size,
+              mime_type: file.type,
+            }),
           })
         }
       }
     }
 
-    setMessages(prev => [...prev, message as TicketMessage & { sender?: UserProfile }])
+    setMessages(prev => [...prev, { ...message, sender: { full_name: currentUser.full_name, avatar_url: currentUser.avatar_url } } as TicketMessage & { sender?: UserProfile }])
     setReplyText('')
     setReplyFiles([])
     setSending(false)
     toast.success('Reply sent!')
 
-    // Notify via API
     await fetch('/api/tickets/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -130,10 +152,14 @@ export default function CustomerTicketDetailPage() {
 
   const closeTicket = async () => {
     if (!ticket) return
-    const confirmed = window.confirm('Are you sure you want to close this ticket? You can still view it but it will be marked as closed.')
+    const confirmed = window.confirm('Are you sure you want to close this ticket?')
     if (!confirmed) return
-    const { error } = await supabase.from('tickets').update({ status: 'closed', closed_at: new Date().toISOString() }).eq('id', ticket.id)
-    if (error) { toast.error('Failed to close ticket'); return }
+    const res = await fetch(`/api/tickets/${ticket.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'closed' }),
+    })
+    if (!res.ok) { toast.error('Failed to close ticket'); return }
     setTicket(prev => prev ? { ...prev, status: 'closed', closed_at: new Date().toISOString() } : prev)
     toast.success('Ticket closed')
   }
@@ -149,21 +175,13 @@ export default function CustomerTicketDetailPage() {
   const saveEdit = async () => {
     if (!ticket || !editSubject.trim() || !editDescription.trim()) { toast.error('Subject and description are required'); return }
     setSavingEdit(true)
-    const { error } = await supabase.from('tickets').update({
-      subject: editSubject,
-      description: editDescription,
-      priority: editPriority,
-    }).eq('id', ticket.id)
-    if (error) { toast.error('Failed to save changes'); setSavingEdit(false); return }
-    setTicket(prev => prev ? { ...prev, subject: editSubject, description: editDescription, priority: editPriority } : prev)
-    await supabase.from('audit_logs').insert({
-      user_id: currentUser?.id,
-      action: 'ticket.edited_by_customer',
-      entity_type: 'ticket',
-      entity_id: ticket.id,
-      old_values: { subject: ticket.subject, priority: ticket.priority },
-      new_values: { subject: editSubject, priority: editPriority },
+    const res = await fetch(`/api/tickets/${ticket.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject: editSubject, description: editDescription, priority: editPriority }),
     })
+    if (!res.ok) { toast.error('Failed to save changes'); setSavingEdit(false); return }
+    setTicket(prev => prev ? { ...prev, subject: editSubject, description: editDescription, priority: editPriority } : prev)
     setSavingEdit(false)
     setShowEdit(false)
     toast.success('Ticket updated!')
@@ -247,7 +265,6 @@ export default function CustomerTicketDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Conversation */}
           <Card>
             <CardHeader>
               <CardTitle>Conversation</CardTitle>
@@ -256,6 +273,7 @@ export default function CustomerTicketDetailPage() {
               {/* Original description */}
               <div className="flex gap-3 mb-6 pb-6 border-b border-slate-100">
                 <Avatar className="h-8 w-8 shrink-0">
+                  {currentUser?.avatar_url && <AvatarImage src={currentUser.avatar_url} />}
                   <AvatarFallback>{getInitials(currentUser?.full_name ?? 'U')}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">

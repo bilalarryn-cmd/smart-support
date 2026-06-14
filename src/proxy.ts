@@ -1,42 +1,56 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { parseAdminToken } from '@/lib/admin-auth'
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // ── Admin routes: use admin_token cookie only ──
+  const adminToken = request.cookies.get('admin_token')?.value
+  const adminPayload = adminToken ? parseAdminToken(adminToken) : null
+
+  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin-login')) {
+    if (!adminPayload) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin-login'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next({ request })
+  }
+
+  if (pathname === '/admin-login') {
+    if (adminPayload) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/dashboard'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next({ request })
+  }
+
+  // ── Regular user routes: use Supabase session ──
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  // Skip auth check if Supabase is not configured (build time)
   if (!supabaseUrl || !supabaseKey || !supabaseUrl.startsWith('http')) {
     return NextResponse.next({ request })
   }
 
   let supabaseResponse = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() { return request.cookies.getAll() },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        supabaseResponse = NextResponse.next({ request })
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        )
       },
-    }
-  )
+    },
+  })
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-  const publicPaths = ['/login', '/signup', '/forgot-password', '/reset-password', '/api/health', '/api/cron']
+  const publicPaths = ['/login', '/admin-login', '/signup', '/forgot-password', '/reset-password', '/api/health', '/api/cron', '/api/categories', '/api/admin']
   const isPublicPath = publicPaths.some(p => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
@@ -45,38 +59,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  const getRole = (u: typeof user) => (u?.user_metadata?.role as string) ?? 'customer'
+
   if (user && (pathname === '/login' || pathname === '/signup')) {
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    const role = profile?.role ?? 'customer'
+    const role = getRole(user)
     const url = request.nextUrl.clone()
-
-    if (role === 'admin') url.pathname = '/admin/dashboard'
-    else if (role === 'agent') url.pathname = '/agent/dashboard'
+    if (role === 'agent') url.pathname = '/agent/dashboard'
     else url.pathname = '/dashboard'
-
     return NextResponse.redirect(url)
   }
 
   if (user) {
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    const role = profile?.role ?? 'customer'
-
-    if (pathname.startsWith('/admin') && role !== 'admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = role === 'agent' ? '/agent/dashboard' : '/dashboard'
-      return NextResponse.redirect(url)
-    }
-
+    const role = getRole(user)
     if (pathname.startsWith('/agent') && !['agent', 'admin'].includes(role)) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'

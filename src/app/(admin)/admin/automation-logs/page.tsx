@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { Cpu, CheckCircle, XCircle, Loader } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -8,9 +8,9 @@ import { formatDateTime, formatRelativeTime } from '@/lib/utils'
 import type { AutomationJob } from '@/types'
 
 export default async function AdminAutomationLogsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const supabase = createAdminClient()
+  
+  
 
   const { data: jobs } = await supabase
     .from('automation_jobs')

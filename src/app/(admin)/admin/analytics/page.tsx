@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { BarChart3, TrendingUp, Clock, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AnalyticsCharts } from '@/components/admin/analytics-charts'
 
 export default async function AdminAnalyticsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const supabase = createAdminClient()
+  
+  
 
   const [ticketsRes, emailRes, agentRes] = await Promise.all([
     supabase.from('tickets').select('id, status, priority, category_id, assigned_agent_id, first_response_at, created_at, sla_breached, category:ticket_categories(name), assigned_agent:user_profiles!assigned_agent_id(full_name)'),

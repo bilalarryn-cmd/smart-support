@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Search, Filter, X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,25 +22,23 @@ export default function CustomerTicketsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
-  const supabase = createClient()
 
   const fetchTickets = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const params = new URLSearchParams()
+    if (statusFilter !== 'all') params.set('status', statusFilter)
+    if (priorityFilter !== 'all') params.set('priority', priorityFilter)
+    params.set('limit', '100')
 
-    let query = supabase
-      .from('tickets')
-      .select('*, category:ticket_categories(id, name, color, description, is_active, created_at, updated_at)')
-      .eq('customer_id', user.id)
-      .order('created_at', { ascending: false })
+    const res = await fetch(`/api/tickets?${params.toString()}`)
+    if (!res.ok) { setLoading(false); return }
 
-    if (statusFilter !== 'all') query = query.eq('status', statusFilter)
-    if (priorityFilter !== 'all') query = query.eq('priority', priorityFilter)
-    if (categoryFilter !== 'all') query = query.eq('category_id', categoryFilter)
-    if (search) query = query.ilike('subject', `%${search}%`)
+    const json = await res.json()
+    let data = (json.data ?? []) as (Ticket & { category?: TicketCategory })[]
 
-    const { data } = await query
-    setTickets((data ?? []) as (Ticket & { category?: TicketCategory })[])
+    if (categoryFilter !== 'all') data = data.filter(t => t.category_id === categoryFilter)
+    if (search) data = data.filter(t => t.subject.toLowerCase().includes(search.toLowerCase()))
+
+    setTickets(data)
     setLoading(false)
   }, [statusFilter, priorityFilter, categoryFilter, search])
 
@@ -50,8 +47,8 @@ export default function CustomerTicketsPage() {
   }, [fetchTickets])
 
   useEffect(() => {
-    supabase.from('ticket_categories').select('*').eq('is_active', true).then(({ data }) => {
-      setCategories((data ?? []) as TicketCategory[])
+    fetch('/api/categories').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setCategories(data as TicketCategory[])
     })
   }, [])
 

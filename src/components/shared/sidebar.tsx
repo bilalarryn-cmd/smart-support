@@ -67,8 +67,14 @@ export function Sidebar({ profile }: { profile: UserProfile | null }) {
   const sections = getNavSections(role)
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
+    if (role === 'admin') {
+      await fetch('/api/admin/logout', { method: 'POST' })
+      router.push('/admin-login')
+    } else {
+      await supabase.auth.signOut()
+      router.push('/login')
+    }
+    router.refresh()
   }
 
   const SidebarContent = () => (
