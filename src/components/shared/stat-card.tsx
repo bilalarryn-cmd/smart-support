@@ -45,11 +45,13 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, color = 'b
 
   return (
     <div className={cn(
-      'rounded-2xl p-5 flex gap-4 items-start transition-all',
-      variant === 'solid' ? c.bg : `bg-white border border-slate-100 shadow-sm ${c.bg}`,
+      'rounded-2xl p-5 flex gap-4 items-start transition-all hover:scale-[1.02] duration-200',
+      variant === 'solid'
+        ? `${c.bg} shadow-lg`
+        : `glass-card ${c.bg}`,
       className
     )}>
-      <div className={cn('rounded-xl p-3 shrink-0', c.iconBg)}>
+      <div className={cn('rounded-xl p-3 shrink-0 shadow-sm', c.iconBg)}>
         <Icon className={cn('h-5 w-5', c.icon)} />
       </div>
       <div className="flex-1 min-w-0">

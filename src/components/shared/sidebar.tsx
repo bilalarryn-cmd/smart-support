@@ -108,15 +108,15 @@ export function Sidebar({ profile }: SidebarProps) {
   }
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-slate-100">
+      <div className="px-5 py-5 border-b border-white/40">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg glow-blue">
             <Ticket className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="text-slate-800 font-bold text-sm leading-tight">Smart Support</p>
+            <p className="font-bold text-sm leading-tight text-gradient">Smart Support</p>
             <p className="text-slate-400 text-xs">Automation Platform</p>
           </div>
         </div>
@@ -127,7 +127,7 @@ export function Sidebar({ profile }: SidebarProps) {
         {sections.map((section, i) => (
           <div key={i}>
             {section.title && (
-              <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400/80 mb-2">
                 {section.title}
               </p>
             )}
@@ -141,13 +141,20 @@ export function Sidebar({ profile }: SidebarProps) {
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                       isActive
-                        ? 'bg-blue-50 text-blue-700 shadow-none'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-gradient-to-r from-blue-50/90 to-indigo-50/90 text-blue-700 shadow-sm border border-blue-100/60'
+                        : 'text-slate-600 hover:bg-white/60 hover:text-slate-900 hover:translate-x-0.5'
                     )}
                   >
-                    <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-blue-600' : 'text-slate-400')} />
+                    <div className={cn(
+                      'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all',
+                      isActive
+                        ? 'bg-gradient-to-br from-blue-500 to-indigo-500 shadow-sm'
+                        : 'bg-slate-100/80'
+                    )}>
+                      <Icon className={cn('h-3.5 w-3.5', isActive ? 'text-white' : 'text-slate-500')} />
+                    </div>
                     <span>{item.label}</span>
                     {item.badge ? (
                       <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
@@ -165,21 +172,21 @@ export function Sidebar({ profile }: SidebarProps) {
       </nav>
 
       {/* User */}
-      <div className="px-3 py-4 border-t border-slate-100">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-slate-50 transition-colors">
-          <Avatar className="h-8 w-8">
+      <div className="px-3 py-4 border-t border-white/40">
+        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/50 transition-all">
+          <Avatar className="h-8 w-8 ring-2 ring-blue-100">
             {profile?.avatar_url && <AvatarImage src={profile.avatar_url} />}
-            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
+            <AvatarFallback className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white text-xs font-semibold">
               {getInitials(profile?.full_name ?? 'U')}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-800 truncate">{profile?.full_name ?? 'User'}</p>
+            <p className="text-sm font-semibold text-slate-800 truncate">{profile?.full_name ?? 'User'}</p>
             <p className="text-xs text-slate-400 capitalize">{role}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-red-50/80 text-slate-400 hover:text-red-500 transition-colors"
             title="Logout"
           >
             <LogOut className="h-4 w-4" />
@@ -222,7 +229,7 @@ export function Sidebar({ profile }: SidebarProps) {
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-60 bg-white border-r border-slate-100 z-30 shadow-sm">
+      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-60 glass-sidebar z-30">
         <SidebarContent />
       </div>
     </>
