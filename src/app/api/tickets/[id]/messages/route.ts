@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmailWithTemplate, buildAgentReplyHtml } from '@/lib/email/resend'
+
+async function getCustomerEmail(customerId: string): Promise<string> {
+  const db = createAdminClient()
+  const { data } = await db.auth.admin.getUserById(customerId)
+  return data.user?.email ?? ''
+}
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -41,5 +48,37 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Send email to customer when agent/admin replies
+  const senderRole = (user.user_metadata?.role as string) ?? 'customer'
+  if (senderRole !== 'customer' && !body.is_internal) {
+    const { data: ticket } = await db
+      .from('tickets')
+      .select('*, customer:user_profiles!customer_id(*)')
+      .eq('id', id).single()
+
+    if (ticket) {
+      const customerEmail = await getCustomerEmail(ticket.customer_id)
+      const customerName = (ticket.customer as { full_name?: string })?.full_name ?? 'Customer'
+      const senderName = (data.sender as { full_name?: string })?.full_name ?? 'Support Team'
+
+      if (customerEmail) {
+        await sendEmailWithTemplate({
+          to: customerEmail,
+          toName: customerName,
+          subject: `New Reply — Ticket #${ticket.ticket_number}: ${ticket.subject}`,
+          html: buildAgentReplyHtml(ticket, body.content, senderName),
+          ticketId: id,
+          templateType: 'agent_reply',
+        })
+      }
+
+      // Also update ticket status to open if it was new
+      if (ticket.status === 'new') {
+        await db.from('tickets').update({ status: 'open' }).eq('id', id)
+      }
+    }
+  }
+
   return NextResponse.json(data, { status: 201 })
 }

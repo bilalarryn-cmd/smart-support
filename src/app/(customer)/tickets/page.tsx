@@ -22,6 +22,7 @@ export default function CustomerTicketsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState('all')
 
   const fetchTickets = useCallback(async () => {
     const params = new URLSearchParams()
@@ -38,9 +39,16 @@ export default function CustomerTicketsPage() {
     if (categoryFilter !== 'all') data = data.filter(t => t.category_id === categoryFilter)
     if (search) data = data.filter(t => t.subject.toLowerCase().includes(search.toLowerCase()))
 
+    // Date filter
+    if (dateFilter !== 'all') {
+      const days = dateFilter === '7d' ? 7 : dateFilter === '30d' ? 30 : 90
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+      data = data.filter(t => new Date(t.created_at) >= cutoff)
+    }
+
     setTickets(data)
     setLoading(false)
-  }, [statusFilter, priorityFilter, categoryFilter, search])
+  }, [statusFilter, priorityFilter, categoryFilter, search, dateFilter])
 
   useEffect(() => {
     fetchTickets()
@@ -52,7 +60,7 @@ export default function CustomerTicketsPage() {
     })
   }, [])
 
-  const hasFilters = statusFilter !== 'all' || priorityFilter !== 'all' || categoryFilter !== 'all' || search
+  const hasFilters = statusFilter !== 'all' || priorityFilter !== 'all' || categoryFilter !== 'all' || search || dateFilter !== 'all'
 
   return (
     <div className="animate-slide-in">
@@ -118,11 +126,22 @@ export default function CustomerTicketsPage() {
                 </SelectContent>
               </Select>
             )}
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Dates</SelectItem>
+                <SelectItem value="7d">Last 7 Days</SelectItem>
+                <SelectItem value="30d">Last 30 Days</SelectItem>
+                <SelectItem value="90d">Last 3 Months</SelectItem>
+              </SelectContent>
+            </Select>
             {hasFilters && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setCategoryFilter('all') }}
+                onClick={() => { setSearch(''); setStatusFilter('all'); setPriorityFilter('all'); setCategoryFilter('all'); setDateFilter('all') }}
                 className="shrink-0"
               >
                 <X className="h-4 w-4" />
