@@ -84,6 +84,10 @@ export async function getAllCachedCountries(): Promise<CountryInfo[]> {
   return (data ?? []) as CountryInfo[]
 }
 
+export function getFlagImageUrl(countryCode: string): string {
+  return `https://flagcdn.com/24x18/${countryCode.toLowerCase()}.png`
+}
+
 export const COMMON_COUNTRIES = [
   { code: 'US', name: 'United States', flag: '🇺🇸' },
   { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },

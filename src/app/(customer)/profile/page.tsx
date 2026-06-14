@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { COMMON_COUNTRIES } from '@/lib/countries/api'
+import { COMMON_COUNTRIES, getFlagImageUrl } from '@/lib/countries/api'
 import { getInitials } from '@/lib/utils'
 import type { UserProfile, CountryInfo } from '@/types'
 
@@ -178,7 +178,10 @@ export default function ProfilePage() {
                   <SelectContent>
                     {COMMON_COUNTRIES.map(c => (
                       <SelectItem key={c.code} value={c.code}>
-                        {c.flag} {c.name}
+                        <span className="flex items-center gap-2">
+                          <img src={getFlagImageUrl(c.code)} alt={c.name} width={24} height={18} className="rounded-sm shrink-0" />
+                          {c.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -195,7 +198,7 @@ export default function ProfilePage() {
               {!countryLoading && countryInfo && (
                 <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl">{countryInfo.flag_emoji || COMMON_COUNTRIES.find(c => c.code === countryInfo.country_code)?.flag || '🌐'}</span>
+                    <img src={getFlagImageUrl(countryInfo.country_code)} alt={countryInfo.name} width={32} height={24} className="rounded-sm" />
                     <span className="font-semibold text-slate-800">{countryInfo.name}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">

@@ -17,7 +17,7 @@ import { SlaIndicator } from '@/components/shared/sla-indicator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { formatDateTime, formatRelativeTime, getInitials, formatFileSize, getMimeIcon } from '@/lib/utils'
-import { COMMON_COUNTRIES } from '@/lib/countries/api'
+import { COMMON_COUNTRIES, getFlagImageUrl } from '@/lib/countries/api'
 import type { Ticket, TicketMessage, TicketAttachment, UserProfile, SlaRule, CountryInfo } from '@/types'
 import Link from 'next/link'
 
@@ -426,7 +426,7 @@ export default function CustomerTicketDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{countryInfo.flag_emoji || COMMON_COUNTRIES.find(c => c.code === countryInfo.country_code)?.flag || '🌐'}</span>
+                  <img src={getFlagImageUrl(countryInfo.country_code)} alt={countryInfo.name} width={32} height={24} className="rounded-sm" />
                   <span className="font-medium text-slate-800">{countryInfo.name}</span>
                 </div>
                 {countryInfo.currency_code && (

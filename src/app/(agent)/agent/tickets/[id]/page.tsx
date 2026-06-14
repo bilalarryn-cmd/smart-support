@@ -16,6 +16,7 @@ import { SlaIndicator } from '@/components/shared/sla-indicator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { formatDateTime, formatRelativeTime, getInitials, formatFileSize, getMimeIcon } from '@/lib/utils'
+import { getFlagImageUrl } from '@/lib/countries/api'
 import type { Ticket, TicketMessage, TicketInternalNote, TicketAttachment, UserProfile, SlaRule, CountryInfo, EmailLog } from '@/types'
 import Link from 'next/link'
 
@@ -597,7 +598,7 @@ export default function AgentTicketDetailPage() {
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">{countryInfo.flag_emoji}</span>
+                  <img src={getFlagImageUrl(countryInfo.country_code)} alt={countryInfo.name} width={28} height={21} className="rounded-sm" />
                   <span className="font-medium">{countryInfo.name}</span>
                 </div>
                 {countryInfo.currency_code && <div className="flex justify-between"><span className="text-slate-500">Currency</span><span>{countryInfo.currency_code}</span></div>}

@@ -15,7 +15,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatRelativeTime } from '@/lib/utils'
-import { COMMON_COUNTRIES } from '@/lib/countries/api'
+import { COMMON_COUNTRIES, getFlagImageUrl } from '@/lib/countries/api'
 import type { Ticket, UserProfile, SlaRule } from '@/types'
 
 export default function AgentQueuePage() {
@@ -102,7 +102,12 @@ export default function AgentQueuePage() {
               <SelectContent>
                 <SelectItem value="all">All Countries</SelectItem>
                 {COMMON_COUNTRIES.map(c => (
-                  <SelectItem key={c.code} value={c.code}>{c.flag} {c.name}</SelectItem>
+                  <SelectItem key={c.code} value={c.code}>
+                    <span className="flex items-center gap-2">
+                      <img src={getFlagImageUrl(c.code)} alt={c.name} width={20} height={15} className="rounded-sm shrink-0" />
+                      {c.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -142,8 +147,8 @@ export default function AgentQueuePage() {
                     </span>
                   )}
                   {ticket.country_code && (
-                    <span className="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
-                      {COMMON_COUNTRIES.find(c => c.code === ticket.country_code)?.flag ?? ''} {ticket.country_code}
+                    <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
+                      <img src={getFlagImageUrl(ticket.country_code)} alt={ticket.country_code} width={16} height={12} className="rounded-sm" /> {ticket.country_code}
                     </span>
                   )}
                 </div>
