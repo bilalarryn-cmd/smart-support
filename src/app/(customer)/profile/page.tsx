@@ -195,7 +195,7 @@ export default function ProfilePage() {
               {!countryLoading && countryInfo && (
                 <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl">{countryInfo.flag_emoji}</span>
+                    <span className="text-2xl">{countryInfo.flag_emoji || COMMON_COUNTRIES.find(c => c.code === countryInfo.country_code)?.flag || '🌐'}</span>
                     <span className="font-semibold text-slate-800">{countryInfo.name}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
