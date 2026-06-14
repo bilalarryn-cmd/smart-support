@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Ticket, UserProfile } from '@/types'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY ?? 're_placeholder')
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
 const FROM_EMAIL = 'Smart Support <support@smartsupport.app>'
 
