@@ -1,0 +1,119 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+import { TicketCheck, Clock, AlertCircle, CheckCircle, Plus, ArrowRight } from 'lucide-react'
+import { StatCard } from '@/components/shared/stat-card'
+import { PageHeader } from '@/components/shared/page-header'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TicketStatusBadge, TicketPriorityBadge } from '@/components/shared/ticket-status-badge'
+import { formatRelativeTime } from '@/lib/utils'
+import type { Ticket } from '@/types'
+
+export default async function CustomerDashboardPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: tickets } = await supabase
+    .from('tickets')
+    .select('*, category:ticket_categories(name, color)')
+    .eq('customer_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const all = tickets ?? []
+  const open = all.filter(t => ['new', 'open'].includes(t.status))
+  const waiting = all.filter(t => t.status === 'waiting_for_customer')
+  const resolved = all.filter(t => t.status === 'resolved')
+  const closed = all.filter(t => t.status === 'closed')
+
+  const recent = all.slice(0, 5)
+
+  return (
+    <div className="animate-slide-in">
+      <PageHeader
+        title="My Dashboard"
+        subtitle="Track and manage your support tickets"
+        actions={
+          <Link href="/tickets/new">
+            <Button size="md">
+              <Plus className="h-4 w-4" />
+              New Ticket
+            </Button>
+          </Link>
+        }
+      />
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard title="Total Tickets" value={all.length} icon={TicketCheck} color="blue" />
+        <StatCard title="Open" value={open.length} icon={Clock} color="amber" />
+        <StatCard title="Waiting" value={waiting.length} icon={AlertCircle} color="red" />
+        <StatCard title="Resolved" value={resolved.length} icon={CheckCircle} color="green" />
+      </div>
+
+      {/* Recent Tickets */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Recent Tickets</CardTitle>
+            <Link href="/tickets">
+              <Button variant="ghost" size="sm">
+                View All
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recent.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-50 mb-3">
+                <TicketCheck className="h-6 w-6 text-blue-400" />
+              </div>
+              <p className="text-slate-500 text-sm mb-4">No tickets yet</p>
+              <Link href="/tickets/new">
+                <Button size="sm">
+                  <Plus className="h-4 w-4" />
+                  Create your first ticket
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recent.map((ticket: Ticket & { category?: { name: string; color: string } }) => (
+                <Link
+                  key={ticket.id}
+                  href={`/tickets/${ticket.id}`}
+                  className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all duration-150 group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-slate-400">#{ticket.ticket_number}</span>
+                      {ticket.category && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{ backgroundColor: ticket.category.color + '20', color: ticket.category.color }}
+                        >
+                          {ticket.category.name}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-medium text-slate-800 text-sm truncate group-hover:text-blue-700">
+                      {ticket.subject}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">{formatRelativeTime(ticket.created_at)}</p>
+                  </div>
+                  <div className="flex flex-col gap-1.5 items-end shrink-0">
+                    <TicketStatusBadge status={ticket.status} />
+                    <TicketPriorityBadge priority={ticket.priority} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
