@@ -3,6 +3,7 @@ import { Globe } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatCard } from '@/components/shared/stat-card'
+import { RefreshFlagsButton } from '@/components/admin/refresh-flags-button'
 import { formatDateTime } from '@/lib/utils'
 import type { CountryInfo } from '@/types'
 
@@ -26,20 +27,22 @@ export default async function AdminCountriesPage() {
     (countryTicketCounts[b.country_code] ?? 0) - (countryTicketCounts[a.country_code] ?? 0)
   )
 
+  const nullFlags = countries.filter(c => !c.flag_emoji || c.flag_emoji === '🌐').length
+
   return (
     <div className="animate-slide-in">
       <PageHeader
         title="Country Data"
         subtitle="CountryInfoCache — geographic data for support tickets"
+        actions={<RefreshFlagsButton nullCount={nullFlags} />}
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
         <StatCard title="Countries Cached" value={countries.length} icon={Globe} color="blue" />
         <StatCard title="Tickets with Country" value={ticketCountries.length} icon={Globe} color="green" />
-        <StatCard title="Unique Countries" value={Object.keys(countryTicketCounts).length} icon={Globe} color="purple" />
+        <StatCard title="Missing Flags" value={nullFlags} icon={Globe} color={nullFlags > 0 ? 'red' : 'slate'} />
       </div>
 
-      {/* Top countries by ticket volume */}
       {sortedByTickets.some(c => countryTicketCounts[c.country_code]) && (
         <Card className="mb-6">
           <CardHeader><CardTitle>Tickets by Country</CardTitle></CardHeader>
@@ -60,12 +63,11 @@ export default async function AdminCountriesPage() {
         </Card>
       )}
 
-      {/* Full cache table */}
       <Card>
         <CardHeader><CardTitle>All Cached Countries ({countries.length})</CardTitle></CardHeader>
         <CardContent>
           {countries.length === 0 ? (
-            <p className="text-center text-slate-400 py-12">No country data cached yet. Data is cached automatically when tickets are created from different countries.</p>
+            <p className="text-center text-slate-400 py-12">No country data cached yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -88,7 +90,7 @@ export default async function AdminCountriesPage() {
                       <td className="py-3 px-3 font-medium text-slate-800">{country.name}</td>
                       <td className="py-3 px-3 text-xs text-slate-500 font-mono">{country.country_code}</td>
                       <td className="py-3 px-3 text-xs text-slate-500">{country.region}</td>
-                      <td className="py-3 px-3 text-xs text-slate-500">{country.currency_code} {country.currency_name ? `(${country.currency_name})` : ''}</td>
+                      <td className="py-3 px-3 text-xs text-slate-500">{country.currency_code}{country.currency_name ? ` (${country.currency_name})` : ''}</td>
                       <td className="py-3 px-3 text-xs text-slate-500">{country.language}</td>
                       <td className="py-3 px-3 text-sm font-semibold text-blue-600">{countryTicketCounts[country.country_code] ?? 0}</td>
                       <td className="py-3 px-3 text-xs text-slate-400">{formatDateTime(country.cached_at)}</td>
