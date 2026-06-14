@@ -35,6 +35,7 @@ export default function CustomerDashboardPage() {
   const open = all.filter(t => t.status === 'open')
   const waiting = all.filter(t => t.status === 'waiting_for_customer')
   const resolved = all.filter(t => t.status === 'resolved')
+  const closed = all.filter(t => t.status === 'closed')
   const recent = all.slice(0, 5)
 
   if (loading) {
@@ -66,12 +67,13 @@ export default function CustomerDashboardPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Total Tickets" value={all.length} icon={TicketCheck} color="blue" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <StatCard title="Total" value={all.length} icon={TicketCheck} color="blue" />
         <StatCard title="New" value={newTickets.length} icon={Inbox} color="amber" />
-        <StatCard title="In Progress" value={open.length} icon={Clock} color="green" />
+        <StatCard title="Open" value={open.length} icon={Clock} color="green" />
         <StatCard title="Waiting" value={waiting.length} icon={AlertCircle} color="red" />
         <StatCard title="Resolved" value={resolved.length} icon={CheckCircle} color="green" />
+        <StatCard title="Closed" value={closed.length} icon={CheckCircle} color="slate" />
       </div>
 
       {/* Recent Tickets */}

@@ -39,7 +39,7 @@ export default function CustomerTicketDetailPage() {
   const [showEdit, setShowEdit] = useState(false)
   const [editSubject, setEditSubject] = useState('')
   const [editDescription, setEditDescription] = useState('')
-  const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium')
+  const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high' | 'critical'>('medium')
   const [savingEdit, setSavingEdit] = useState(false)
 
   const loadTicket = useCallback(async () => {
@@ -169,7 +169,7 @@ export default function CustomerTicketDetailPage() {
     if (!ticket) return
     setEditSubject(ticket.subject)
     setEditDescription(ticket.description)
-    setEditPriority(ticket.priority as 'low' | 'medium' | 'high')
+    setEditPriority(ticket.priority as 'low' | 'medium' | 'high' | 'critical')
     setShowEdit(true)
   }
 
@@ -245,7 +245,7 @@ export default function CustomerTicketDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Priority</Label>
-                <Select value={editPriority} onValueChange={v => setEditPriority(v as 'low' | 'medium' | 'high')}>
+                <Select value={editPriority} onValueChange={v => setEditPriority(v as 'low' | 'medium' | 'high' | 'critical')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
