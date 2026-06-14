@@ -1,66 +1,77 @@
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #1e3a8a 60%, #1d4ed8 100%)',
-      }}
-    >
-      {/* Glassy orbs */}
-      <div className="absolute top-[-10%] left-[-5%] w-96 h-96 rounded-full opacity-20 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }} />
-      <div className="absolute bottom-[-10%] right-[-5%] w-80 h-80 rounded-full opacity-20 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #3b82f6, transparent)' }} />
-      <div className="absolute top-[40%] right-[20%] w-64 h-64 rounded-full opacity-10 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #8b5cf6, transparent)' }} />
+    <div className="min-h-screen flex" style={{ background: '#EEF2F7' }}>
+      {/* Left Panel - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #1E63FF 0%, #6A5BFF 100%)' }}>
 
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
+        {/* Background orbs */}
+        <div className="absolute top-[-20%] right-[-10%] w-80 h-80 rounded-full opacity-20 blur-3xl"
+          style={{ background: 'radial-gradient(circle, #ffffff, transparent)' }} />
+        <div className="absolute bottom-[-15%] left-[-10%] w-72 h-72 rounded-full opacity-15 blur-3xl"
+          style={{ background: 'radial-gradient(circle, #ffffff, transparent)' }} />
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 relative"
+        {/* Grid overlay */}
+        <div className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+            backgroundSize: '48px 48px',
+          }} />
+
+        <div className="relative z-10 text-center max-w-sm">
+          {/* Logo */}
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-[18px] mb-8"
             style={{
-              background: 'rgba(255,255,255,0.12)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              boxShadow: '0 8px 32px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}
-          >
-            <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            }}>
+            <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
             </svg>
-            <div className="absolute inset-0 rounded-2xl"
-              style={{ boxShadow: '0 0 20px rgba(99,102,241,0.5)' }} />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Smart Support</h1>
-          <p className="text-blue-200/70 text-sm mt-1.5">Smart Productivity and Automation Platform</p>
+
+          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">Smart Support</h1>
+          <p className="text-white/70 text-lg mb-10">Smart Productivity and Automation Platform</p>
+
+          {/* Feature pills */}
+          <div className="space-y-3">
+            {[
+              { icon: '🎯', text: 'Smart Ticket Management' },
+              { icon: '⚡', text: 'Real-time SLA Monitoring' },
+              { icon: '🤖', text: 'Automated Workflows' },
+              { icon: '📊', text: 'Advanced Analytics' },
+            ].map((f, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-[12px] text-left"
+                style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <span className="text-xl">{f.icon}</span>
+                <span className="text-white/90 text-sm font-medium">{f.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Glass Card */}
-        <div className="rounded-3xl p-8 relative"
-          style={{
-            background: 'rgba(255,255,255,0.08)',
-            backdropFilter: 'blur(32px) saturate(1.8)',
-            WebkitBackdropFilter: 'blur(32px) saturate(1.8)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            boxShadow: '0 24px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
-          }}
-        >
-          {/* Inner glow top */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)' }} />
+        <p className="absolute bottom-6 text-white/40 text-xs">© 2026 Smart Support · All rights reserved</p>
+      </div>
+
+      {/* Right Panel - Form */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12">
+        {/* Mobile logo */}
+        <div className="lg:hidden text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-[14px] mb-3"
+            style={{ background: 'linear-gradient(90deg, #1E63FF, #6A5BFF)', boxShadow: '0 5px 20px rgba(30,99,255,0.3)' }}>
+            <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold" style={{ background: 'linear-gradient(90deg, #1E63FF, #6A5BFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Smart Support</h1>
+        </div>
+
+        {/* Card */}
+        <div className="w-full max-w-md bg-white rounded-[18px] p-8 shadow-[0_5px_40px_rgba(0,0,0,0.10)] border border-[#E5E7EB]">
           {children}
         </div>
-
-        <p className="text-center text-blue-200/40 text-xs mt-6">
-          © 2026 Smart Support · Secure & Encrypted
-        </p>
       </div>
     </div>
   )

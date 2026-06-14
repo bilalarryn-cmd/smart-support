@@ -10,29 +10,31 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantClasses: Record<string, string> = {
-  default: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200',
-  outline: 'border border-blue-200 bg-white hover:bg-blue-50 text-blue-700',
-  ghost: 'hover:bg-blue-50 text-slate-600 hover:text-blue-700',
-  destructive: 'bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-200',
-  secondary: 'bg-slate-100 hover:bg-slate-200 text-slate-700',
-  link: 'text-blue-600 hover:text-blue-800 underline-offset-4 hover:underline',
+  default: 'text-white shadow-sm transition-all duration-200 hover:opacity-90 hover:shadow-md',
+  outline: 'border border-[#E5E7EB] bg-white hover:bg-[#f0f4ff] text-[#1E63FF] hover:border-[#1E63FF]',
+  ghost: 'hover:bg-[#f0f4ff] text-[#666666] hover:text-[#1E63FF]',
+  destructive: 'bg-[#EF4444] hover:bg-red-600 text-white shadow-sm',
+  secondary: 'bg-[#EEF2F7] hover:bg-[#e2e8f0] text-[#222222]',
+  link: 'text-[#1E63FF] hover:text-[#6A5BFF] underline-offset-4 hover:underline',
 }
 
 const sizeClasses: Record<string, string> = {
-  sm: 'h-8 px-3 text-xs rounded-lg',
-  md: 'h-10 px-4 text-sm rounded-xl',
-  lg: 'h-11 px-6 text-base rounded-xl',
-  icon: 'h-9 w-9 rounded-xl',
+  sm: 'h-8 px-3 text-xs rounded-[10px]',
+  md: 'h-10 px-4 text-sm rounded-[12px]',
+  lg: 'h-11 px-6 text-base rounded-[12px]',
+  icon: 'h-9 w-9 rounded-[10px]',
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'md', loading, disabled, children, ...props }, ref) => {
+  ({ className, variant = 'default', size = 'md', loading, disabled, style, children, ...props }, ref) => {
+    const isDefault = variant === 'default'
     return (
       <button
         ref={ref}
         disabled={disabled || loading}
+        style={isDefault ? { background: 'linear-gradient(90deg, #1E63FF, #6A5BFF)', ...style } : style}
         className={cn(
-          'inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 cursor-pointer',
+          'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E63FF]/40 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 cursor-pointer',
           variantClasses[variant],
           sizeClasses[size],
           className

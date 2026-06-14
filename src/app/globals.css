@@ -1,110 +1,111 @@
 @import "tailwindcss";
 
 @layer base {
-  *, *::before, *::after {
-    box-sizing: border-box;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
+
   body {
-    background-color: #e8f0fe;
+    background-color: #EEF2F7;
     background-image:
-      radial-gradient(ellipse 80% 60% at 20% -10%, rgba(99,102,241,0.18) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 80% 110%, rgba(59,130,246,0.15) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 50% 50%, rgba(139,92,246,0.07) 0%, transparent 70%);
+      radial-gradient(ellipse 70% 50% at 10% 0%, rgba(30,99,255,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 100%, rgba(106,91,255,0.07) 0%, transparent 60%);
     background-attachment: fixed;
-    color: #0f172a;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #222222;
+    font-family: Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer utilities {
-  .glass {
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(20px) saturate(1.8);
-    -webkit-backdrop-filter: blur(20px) saturate(1.8);
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+  /* ── Fintech Gradient ── */
+  .fintech-gradient {
+    background: linear-gradient(90deg, #1E63FF, #6A5BFF);
   }
-  .glass-card {
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(24px) saturate(1.6);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 4px 24px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255,255,255,0.8);
-  }
-  .glass-sidebar {
-    background: rgba(255, 255, 255, 0.82);
-    backdrop-filter: blur(28px) saturate(1.8);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    border-right: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 4px 0 32px rgba(99, 102, 241, 0.08), inset -1px 0 0 rgba(255,255,255,0.6);
-  }
-  .glass-topbar {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(20px) saturate(1.6);
-    -webkit-backdrop-filter: blur(20px) saturate(1.6);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 2px 20px rgba(99, 102, 241, 0.07);
-  }
-  .gradient-blue {
-    background: linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #3b82f6 100%);
-  }
-  .gradient-blue-soft {
-    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
-  }
-  .text-gradient {
-    background: linear-gradient(135deg, #1e40af, #6366f1);
+  .fintech-gradient-text {
+    background: linear-gradient(90deg, #1E63FF, #6A5BFF);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  .glow-blue {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.35), 0 4px 16px rgba(59, 130, 246, 0.2);
+
+  /* ── Glass ── */
+  .glass {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.30);
   }
+  .glass-card {
+    background: #ffffff;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+  }
+  .glass-sidebar {
+    background: #ffffff;
+    border-right: 1px solid #E5E7EB;
+    box-shadow: 2px 0 16px rgba(30, 99, 255, 0.06);
+  }
+  .glass-topbar {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid #E5E7EB;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  /* ── Legacy ── */
+  .gradient-blue { background: linear-gradient(135deg, #1E63FF 0%, #6A5BFF 100%); }
+  .gradient-blue-soft { background: linear-gradient(135deg, #EEF2F7 0%, #f0f4ff 100%); }
+  .text-gradient { background: linear-gradient(90deg, #1E63FF, #6A5BFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ── Sidebar link ── */
   .sidebar-link {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.625rem 0.875rem;
-    border-radius: 0.75rem;
+    border-radius: 10px;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #475569;
-    transition: all 0.2s ease;
+    color: #666666;
+    transition: all 0.18s ease;
     text-decoration: none;
   }
   .sidebar-link:hover {
-    background: rgba(239, 246, 255, 0.8);
-    color: #2563eb;
-    transform: translateX(2px);
+    background: #f0f4ff;
+    color: #1E63FF;
   }
   .sidebar-link.active {
-    background: linear-gradient(135deg, rgba(219,234,254,0.9), rgba(238,242,255,0.9));
-    color: #1d4ed8;
+    background: linear-gradient(90deg, rgba(30,99,255,0.1), rgba(106,91,255,0.08));
+    color: #1E63FF;
     font-weight: 600;
-    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.18), inset 0 1px 0 rgba(255,255,255,0.8);
+    box-shadow: inset 3px 0 0 #1E63FF;
   }
 }
 
+/* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(147,197,253,0.6); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #93c5fd; }
+::-webkit-scrollbar-thumb { background: rgba(30,99,255,0.2); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(30,99,255,0.4); }
 
+/* ── Animations ── */
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.animate-slide-in { animation: slideIn 0.22s cubic-bezier(0.16,1,0.3,1); }
+.animate-slide-in { animation: slideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
+.animate-marquee { animation: marquee 20s linear infinite; }
+.animate-marquee-reverse { animation: marquee 20s linear infinite reverse; }

@@ -15,28 +15,28 @@ interface StatCardProps {
 
 const colorMap = {
   blue: {
-    light: { bg: 'bg-blue-50', iconBg: 'bg-blue-100', icon: 'text-blue-600', value: 'text-blue-700', title: 'text-blue-500' },
-    solid: { bg: 'bg-blue-600', iconBg: 'bg-blue-500', icon: 'text-white', value: 'text-white', title: 'text-blue-100' },
+    light: { bg: 'bg-[#f0f4ff]', iconBg: 'bg-[#1E63FF]', icon: 'text-white', value: 'text-[#1E63FF]', title: 'text-[#666666]' },
+    solid: { bg: '', iconBg: 'bg-white/20', icon: 'text-white', value: 'text-white', title: 'text-white/80' },
   },
   green: {
-    light: { bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', icon: 'text-emerald-600', value: 'text-emerald-700', title: 'text-emerald-500' },
-    solid: { bg: 'bg-emerald-500', iconBg: 'bg-emerald-400', icon: 'text-white', value: 'text-white', title: 'text-emerald-100' },
+    light: { bg: 'bg-[#f0fdf4]', iconBg: 'bg-[#22C55E]', icon: 'text-white', value: 'text-[#22C55E]', title: 'text-[#666666]' },
+    solid: { bg: '', iconBg: 'bg-white/20', icon: 'text-white', value: 'text-white', title: 'text-white/80' },
   },
   amber: {
-    light: { bg: 'bg-amber-50', iconBg: 'bg-amber-100', icon: 'text-amber-600', value: 'text-amber-700', title: 'text-amber-500' },
-    solid: { bg: 'bg-amber-500', iconBg: 'bg-amber-400', icon: 'text-white', value: 'text-white', title: 'text-amber-100' },
+    light: { bg: 'bg-[#fffbeb]', iconBg: 'bg-[#F59E0B]', icon: 'text-white', value: 'text-[#F59E0B]', title: 'text-[#666666]' },
+    solid: { bg: '', iconBg: 'bg-white/20', icon: 'text-white', value: 'text-white', title: 'text-white/80' },
   },
   red: {
-    light: { bg: 'bg-red-50', iconBg: 'bg-red-100', icon: 'text-red-600', value: 'text-red-700', title: 'text-red-500' },
-    solid: { bg: 'bg-red-500', iconBg: 'bg-red-400', icon: 'text-white', value: 'text-white', title: 'text-red-100' },
+    light: { bg: 'bg-[#fff5f5]', iconBg: 'bg-[#EF4444]', icon: 'text-white', value: 'text-[#EF4444]', title: 'text-[#666666]' },
+    solid: { bg: '', iconBg: 'bg-white/20', icon: 'text-white', value: 'text-white', title: 'text-white/80' },
   },
   purple: {
-    light: { bg: 'bg-purple-50', iconBg: 'bg-purple-100', icon: 'text-purple-600', value: 'text-purple-700', title: 'text-purple-500' },
-    solid: { bg: 'bg-purple-600', iconBg: 'bg-purple-500', icon: 'text-white', value: 'text-white', title: 'text-purple-100' },
+    light: { bg: 'bg-[#f5f3ff]', iconBg: 'bg-[#6A5BFF]', icon: 'text-white', value: 'text-[#6A5BFF]', title: 'text-[#666666]' },
+    solid: { bg: '', iconBg: 'bg-white/20', icon: 'text-white', value: 'text-white', title: 'text-white/80' },
   },
   slate: {
-    light: { bg: 'bg-slate-50', iconBg: 'bg-slate-100', icon: 'text-slate-600', value: 'text-slate-700', title: 'text-slate-500' },
-    solid: { bg: 'bg-slate-700', iconBg: 'bg-slate-600', icon: 'text-white', value: 'text-white', title: 'text-slate-300' },
+    light: { bg: 'bg-[#f8fafc]', iconBg: 'bg-[#64748b]', icon: 'text-white', value: 'text-[#222222]', title: 'text-[#666666]' },
+    solid: { bg: '', iconBg: 'bg-white/20', icon: 'text-white', value: 'text-white', title: 'text-white/80' },
   },
 }
 
@@ -44,14 +44,17 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, color = 'b
   const c = colorMap[color][variant]
 
   return (
-    <div className={cn(
-      'rounded-2xl p-5 flex gap-4 items-start transition-all hover:scale-[1.02] duration-200',
-      variant === 'solid'
-        ? `${c.bg} shadow-lg`
-        : `glass-card ${c.bg}`,
-      className
-    )}>
-      <div className={cn('rounded-xl p-3 shrink-0 shadow-sm', c.iconBg)}>
+    <div
+      className={cn(
+        'rounded-[14px] p-5 flex gap-4 items-start transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5',
+        variant === 'solid'
+          ? 'text-white shadow-[0_5px_20px_rgba(0,0,0,0.15)]'
+          : `bg-white border border-[#E5E7EB] shadow-[0_5px_20px_rgba(0,0,0,0.08)] ${c.bg}`,
+        className
+      )}
+      style={variant === 'solid' ? { background: 'linear-gradient(90deg, #1E63FF, #6A5BFF)' } : undefined}
+    >
+      <div className={cn('rounded-[10px] p-2.5 shrink-0', c.iconBg)}>
         <Icon className={cn('h-5 w-5', c.icon)} />
       </div>
       <div className="flex-1 min-w-0">
@@ -59,7 +62,7 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, color = 'b
         <p className={cn('text-2xl font-bold mt-0.5', c.value)}>{value}</p>
         {subtitle && <p className={cn('text-xs mt-0.5 opacity-70', c.title)}>{subtitle}</p>}
         {trend && (
-          <p className={cn('text-xs font-medium mt-1', variant === 'solid' ? 'text-white/80' : trend.value >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+          <p className={cn('text-xs font-medium mt-1', variant === 'solid' ? 'text-white/80' : trend.value >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]')}>
             {trend.value >= 0 ? '↑' : '↓'} {Math.abs(trend.value)}% {trend.label}
           </p>
         )}
