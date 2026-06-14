@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Ticket, Plus, User, Bell, LogOut, Menu, X,
   Users, Settings, BarChart3, Mail, Cpu, ClipboardList, Tag,
-  Clock, Inbox, CheckSquare, Shield, ChevronRight, MessageSquare
+  Clock, Inbox, CheckSquare, Shield, ChevronRight, MessageSquare,
+  AlertTriangle, Globe
 } from 'lucide-react'
 import type { UserProfile } from '@/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -30,6 +31,7 @@ function getNavSections(role: string): NavSection[] {
         { label: 'Agents', href: '/admin/agents', icon: Shield },
         { label: 'Categories', href: '/admin/categories', icon: Tag },
         { label: 'SLA Rules', href: '/admin/sla', icon: Clock },
+        { label: 'SLA Escalation', href: '/admin/sla-escalation', icon: AlertTriangle },
         { label: 'Canned Responses', href: '/admin/canned-responses', icon: MessageSquare },
       ]},
       { title: 'Logs', items: [
@@ -38,6 +40,7 @@ function getNavSections(role: string): NavSection[] {
         { label: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardList },
       ]},
       { title: 'System', items: [
+        { label: 'Countries', href: '/admin/countries', icon: Globe },
         { label: 'Settings', href: '/admin/settings', icon: Settings },
       ]},
     ]

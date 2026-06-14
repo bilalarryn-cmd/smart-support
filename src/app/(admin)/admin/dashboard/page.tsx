@@ -32,10 +32,12 @@ export default async function AdminDashboardPage() {
     total: tickets.length,
     open: tickets.filter(t => ['new', 'open'].includes(t.status)).length,
     resolved: tickets.filter(t => t.status === 'resolved').length,
-    high: tickets.filter(t => t.priority === 'high').length,
+    closed: tickets.filter(t => t.status === 'closed').length,
+    high: tickets.filter(t => ['high', 'critical'].includes(t.priority)).length,
     breached: tickets.filter(t => t.sla_breached).length,
     customers: users.filter((u: { role: string }) => u.role === 'customer').length,
     agents: users.filter((u: { role: string }) => u.role === 'agent').length,
+    activeAgents: users.filter((u: { role: string; is_active: boolean }) => u.role === 'agent' && u.is_active).length,
   }
 
   const emailSent = (emailRes.data ?? []).filter((e: { status: string }) => e.status === 'sent').length
@@ -76,8 +78,8 @@ export default async function AdminDashboardPage() {
       {/* Light stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <StatCard title="Total Tickets" value={stats.total} icon={TicketCheck} color="slate" />
-        <StatCard title="Avg Response Time" value={avgResponseHours === '—' ? '—' : `${avgResponseHours}h`} icon={Timer} color="blue" subtitle="First response" />
-        <StatCard title="Customers" value={stats.customers} icon={Users} color="purple" />
+        <StatCard title="Closed Tickets" value={stats.closed} icon={CheckCircle} color="slate" />
+        <StatCard title="Active Agents" value={`${stats.activeAgents}/${stats.agents}`} icon={Users} color="blue" subtitle="Active / Total" />
         <StatCard title="Emails Today" value={emailSent} icon={Mail} color="green" />
       </div>
 

@@ -1,6 +1,6 @@
 export type UserRole = 'customer' | 'agent' | 'admin'
 export type TicketStatus = 'new' | 'open' | 'waiting_for_customer' | 'resolved' | 'closed'
-export type TicketPriority = 'low' | 'medium' | 'high'
+export type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
 export type EmailStatus = 'sent' | 'failed' | 'bounced'
 export type AutomationStatus = 'running' | 'completed' | 'failed'
 

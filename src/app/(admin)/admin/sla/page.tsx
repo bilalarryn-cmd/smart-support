@@ -14,7 +14,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { PageLoader } from '@/components/shared/loading-spinner'
 import type { SlaRule, TicketPriority } from '@/types'
 
+const PRIORITY_ORDER: TicketPriority[] = ['critical', 'high', 'medium', 'low']
+
 const PRIORITY_CONFIG = {
+  critical: { label: 'Critical Priority', color: 'bg-purple-50 border-purple-100', icon: '🚨', textColor: 'text-purple-700' },
   high: { label: 'High Priority', color: 'bg-red-50 border-red-100', icon: '🔴', textColor: 'text-red-700' },
   medium: { label: 'Medium Priority', color: 'bg-amber-50 border-amber-100', icon: '🟡', textColor: 'text-amber-700' },
   low: { label: 'Low Priority', color: 'bg-emerald-50 border-emerald-100', icon: '🟢', textColor: 'text-emerald-700' },
@@ -26,6 +29,7 @@ export default function AdminSlaPage() {
   const [editing, setEditing] = useState<SlaRule | null>(null)
   const [form, setForm] = useState({ response_hours: 0, resolution_hours: 0, warning_threshold: 80, is_active: true })
   const [saving, setSaving] = useState(false)
+  const [creating, setCreating] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -34,6 +38,21 @@ export default function AdminSlaPage() {
       setLoading(false)
     })
   }, [])
+
+  const createCritical = async () => {
+    setCreating(true)
+    const { data, error } = await supabase.from('sla_rules').insert({
+      priority: 'critical',
+      response_hours: 1,
+      resolution_hours: 8,
+      warning_threshold: 80,
+      is_active: true,
+    }).select().single()
+    if (error) { toast.error('Failed to create Critical SLA rule'); setCreating(false); return }
+    setRules(prev => [data as SlaRule, ...prev])
+    setCreating(false)
+    toast.success('Critical SLA rule created')
+  }
 
   const openEdit = (rule: SlaRule) => {
     setEditing(rule)
@@ -62,10 +81,23 @@ export default function AdminSlaPage() {
     <div className="animate-slide-in">
       <PageHeader title="SLA Rules" subtitle="Configure response and resolution time targets" />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {(Object.keys(PRIORITY_CONFIG) as TicketPriority[]).map(priority => {
+      {!rules.find(r => r.priority === 'critical') && (
+        <div className="mb-6 flex items-center gap-4 p-4 bg-purple-50 border border-purple-200 rounded-2xl">
+          <span className="text-2xl">🚨</span>
+          <div className="flex-1">
+            <p className="font-semibold text-purple-800">Critical Priority SLA not configured</p>
+            <p className="text-sm text-purple-600">Add Critical SLA rule (1hr response, 8hr resolution)</p>
+          </div>
+          <Button onClick={createCritical} loading={creating} className="bg-purple-600 hover:bg-purple-700 text-white">
+            Add Critical SLA
+          </Button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {PRIORITY_ORDER.map(priority => {
           const rule = rules.find(r => r.priority === priority)
-          const config = PRIORITY_CONFIG[priority]
+          const config = PRIORITY_CONFIG[priority as keyof typeof PRIORITY_CONFIG]
           if (!rule) return null
 
           return (

@@ -1,11 +1,13 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Shield, Search } from 'lucide-react'
+import { toast } from 'sonner'
+import { Shield, Search, UserCheck, UserX } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { PageLoader } from '@/components/shared/loading-spinner'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -18,28 +20,34 @@ export default function AdminAgentsPage() {
   const [search, setSearch] = useState('')
   const supabase = createClient()
 
-  useEffect(() => {
-    const load = async () => {
-      let q = supabase.from('user_profiles').select('*').eq('role', 'agent').order('full_name')
-      if (search) q = q.ilike('full_name', `%${search}%`)
-      const { data: agentData } = await q
+  const load = async () => {
+    let q = supabase.from('user_profiles').select('*').eq('role', 'agent').order('full_name')
+    if (search) q = q.ilike('full_name', `%${search}%`)
+    const { data: agentData } = await q
 
-      const agentsWithCounts = await Promise.all(
-        ((agentData ?? []) as UserProfile[]).map(async agent => {
-          const { count } = await supabase
-            .from('tickets')
-            .select('*', { count: 'exact', head: true })
-            .eq('assigned_agent_id', agent.id)
-            .not('status', 'in', '(resolved,closed)')
-          return { ...agent, ticket_count: count ?? 0 }
-        })
-      )
+    const agentsWithCounts = await Promise.all(
+      ((agentData ?? []) as UserProfile[]).map(async agent => {
+        const { count } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('assigned_agent_id', agent.id)
+          .not('status', 'in', '(resolved,closed)')
+        return { ...agent, ticket_count: count ?? 0 }
+      })
+    )
 
-      setAgents(agentsWithCounts)
-      setLoading(false)
-    }
-    load()
-  }, [search])
+    setAgents(agentsWithCounts)
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [search])
+
+  const toggleActive = async (agentId: string, current: boolean) => {
+    const { error } = await supabase.from('user_profiles').update({ is_active: !current }).eq('id', agentId)
+    if (error) { toast.error('Failed to update agent'); return }
+    setAgents(prev => prev.map(a => a.id === agentId ? { ...a, is_active: !current } : a))
+    toast.success(`Agent ${!current ? 'activated' : 'deactivated'}`)
+  }
 
   return (
     <div className="animate-slide-in">
@@ -76,7 +84,14 @@ export default function AdminAgentsPage() {
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${agent.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
                   {agent.is_active ? 'Active' : 'Inactive'}
                 </span>
-                {agent.country_code && <span className="text-xs text-slate-400">{agent.country_code}</span>}
+                <Button
+                  size="sm"
+                  variant={agent.is_active ? 'outline' : 'default'}
+                  onClick={() => toggleActive(agent.id, agent.is_active)}
+                  className="h-7 px-2 text-xs"
+                >
+                  {agent.is_active ? <><UserX className="h-3.5 w-3.5 mr-1" />Deactivate</> : <><UserCheck className="h-3.5 w-3.5 mr-1" />Activate</>}
+                </Button>
               </div>
             </div>
           ))}

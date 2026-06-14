@@ -15,10 +15,13 @@ export function TicketStatusBadge({ status }: { status: TicketStatus }) {
 }
 
 export function TicketPriorityBadge({ priority }: { priority: TicketPriority }) {
-  const variantMap: Record<TicketPriority, 'default' | 'success' | 'warning' | 'danger' | 'info' | 'secondary'> = {
+  if (priority === 'critical') {
+    return <Badge variant="danger" className="bg-purple-600 text-white border-purple-600">🚨 Critical</Badge>
+  }
+  const variantMap: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info' | 'secondary'> = {
     low: 'secondary',
     medium: 'warning',
     high: 'danger',
   }
-  return <Badge variant={variantMap[priority]}>{getPriorityLabel(priority)}</Badge>
+  return <Badge variant={variantMap[priority] ?? 'default'}>{getPriorityLabel(priority)}</Badge>
 }

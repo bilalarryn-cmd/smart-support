@@ -58,8 +58,9 @@ export function getPriorityLabel(priority: TicketPriority): string {
     low: 'Low',
     medium: 'Medium',
     high: 'High',
+    critical: 'Critical',
   }
-  return labels[priority]
+  return labels[priority] ?? priority
 }
 
 export function getPriorityColor(priority: TicketPriority): string {
@@ -67,6 +68,7 @@ export function getPriorityColor(priority: TicketPriority): string {
     low: 'bg-gray-100 text-gray-700 border-gray-200',
     medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     high: 'bg-red-100 text-red-700 border-red-200',
+    critical: 'bg-purple-100 text-purple-700 border-purple-200',
   }
   return colors[priority]
 }

@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { Cpu, CheckCircle, XCircle, Loader } from 'lucide-react'
+import { Cpu, CheckCircle, XCircle, Loader, Timer } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatCard } from '@/components/shared/stat-card'
@@ -23,6 +23,16 @@ export default async function AdminAutomationLogsPage() {
   const failed = all.filter(j => j.status === 'failed').length
   const totalActions = all.reduce((s, j) => s + j.actions_taken, 0)
 
+  const lastRun = all[0] ?? null
+  const nextRunAt = lastRun
+    ? new Date(new Date(lastRun.created_at).getTime() + 15 * 60 * 1000)
+    : null
+  const nextRunLabel = nextRunAt
+    ? nextRunAt < new Date()
+      ? 'Due now / Running soon'
+      : `~${Math.ceil((nextRunAt.getTime() - Date.now()) / 60000)} min`
+    : 'Not run yet'
+
   return (
     <div className="animate-slide-in">
       <PageHeader title="Automation Logs" subtitle="Cron job execution history" />
@@ -32,6 +42,14 @@ export default async function AdminAutomationLogsPage() {
         <StatCard title="Completed" value={completed} icon={CheckCircle} color="green" />
         <StatCard title="Failed" value={failed} icon={XCircle} color="red" />
         <StatCard title="Total Actions" value={totalActions} icon={Loader} color="purple" />
+      </div>
+
+      <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-blue-50 border border-blue-200 rounded-2xl text-sm text-blue-700">
+        <Timer className="h-4 w-4 shrink-0" />
+        <span>
+          <strong>Next Scheduled Run:</strong> {nextRunLabel}
+          {lastRun && <span className="text-blue-500 ml-2">— Cron runs every 15 minutes on Vercel</span>}
+        </span>
       </div>
 
       <Card>
