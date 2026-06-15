@@ -3,7 +3,6 @@
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 import { Plus, Edit2, Trash2, MessageSquare, Check, X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +43,6 @@ export function CannedResponsesClient({ initialResponses }: { initialResponses: 
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('all')
-  const supabase = createClient()
 
   const openCreate = () => { setEditingId(null); setForm(EMPTY_FORM); setShowForm(true) }
   const openEdit = (r: CannedResponse) => { setEditingId(r.id); setForm({ title: r.title, content: r.content, category: r.category }); setShowForm(true) }
@@ -55,23 +53,24 @@ export function CannedResponsesClient({ initialResponses }: { initialResponses: 
     setSaving(true)
 
     if (editingId) {
-      const { data, error } = await supabase
-        .from('canned_responses')
-        .update({ title: form.title, content: form.content, category: form.category, updated_at: new Date().toISOString() })
-        .eq('id', editingId)
-        .select()
-        .single()
-      if (error) { toast.error('Failed to update'); setSaving(false); return }
-      setResponses(prev => prev.map(r => r.id === editingId ? data as CannedResponse : r))
+      const res = await fetch('/api/admin/canned-responses', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, updates: form }),
+      })
+      if (!res.ok) { toast.error('Failed to update'); setSaving(false); return }
+      const data = await res.json()
+      setResponses(prev => prev.map(r => r.id === editingId ? data.response as CannedResponse : r))
       toast.success('Response updated')
     } else {
-      const { data, error } = await supabase
-        .from('canned_responses')
-        .insert({ title: form.title, content: form.content, category: form.category })
-        .select()
-        .single()
-      if (error) { toast.error('Failed to create'); setSaving(false); return }
-      setResponses(prev => [...prev, data as CannedResponse])
+      const res = await fetch('/api/admin/canned-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) { toast.error('Failed to create'); setSaving(false); return }
+      const data = await res.json()
+      setResponses(prev => [...prev, data.response as CannedResponse])
       toast.success('Response created')
     }
 
@@ -80,15 +79,23 @@ export function CannedResponsesClient({ initialResponses }: { initialResponses: 
   }
 
   const toggleActive = async (r: CannedResponse) => {
-    const { error } = await supabase.from('canned_responses').update({ is_active: !r.is_active }).eq('id', r.id)
-    if (error) { toast.error('Failed to update'); return }
+    const res = await fetch('/api/admin/canned-responses', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id, updates: { is_active: !r.is_active } }),
+    })
+    if (!res.ok) { toast.error('Failed to update'); return }
     setResponses(prev => prev.map(x => x.id === r.id ? { ...x, is_active: !r.is_active } : x))
   }
 
   const remove = async (id: string) => {
     if (!window.confirm('Delete this canned response?')) return
-    const { error } = await supabase.from('canned_responses').delete().eq('id', id)
-    if (error) { toast.error('Failed to delete'); return }
+    const res = await fetch('/api/admin/canned-responses', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) { toast.error('Failed to delete'); return }
     setResponses(prev => prev.filter(r => r.id !== id))
     toast.success('Deleted')
   }
@@ -109,7 +116,6 @@ export function CannedResponsesClient({ initialResponses }: { initialResponses: 
         }
       />
 
-      {/* Filter bar */}
       <div className="flex gap-2 flex-wrap mb-6">
         {['all', ...CATEGORIES].map(cat => (
           <button
@@ -124,7 +130,6 @@ export function CannedResponsesClient({ initialResponses }: { initialResponses: 
         ))}
       </div>
 
-      {/* Create / Edit form */}
       {showForm && (
         <Card className="mb-6 border-blue-200">
           <CardHeader>
@@ -168,7 +173,6 @@ export function CannedResponsesClient({ initialResponses }: { initialResponses: 
         </Card>
       )}
 
-      {/* Responses grouped by category */}
       {Object.keys(grouped).length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-40" />

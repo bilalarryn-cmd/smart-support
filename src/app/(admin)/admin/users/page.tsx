@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Users, Search, UserCheck, UserX } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,29 +19,38 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
-  const supabase = createClient()
 
   const load = async () => {
-    let q = supabase.from('user_profiles').select('*').order('created_at', { ascending: false })
-    if (roleFilter !== 'all') q = q.eq('role', roleFilter)
-    if (search) q = q.ilike('full_name', `%${search}%`)
-    const { data } = await q
-    setUsers((data ?? []) as UserProfile[])
+    const params = new URLSearchParams()
+    if (roleFilter !== 'all') params.set('role', roleFilter)
+    if (search) params.set('search', search)
+    const res = await fetch(`/api/admin/users?${params}`)
+    if (!res.ok) { setLoading(false); return }
+    const data = await res.json()
+    setUsers(data.users as UserProfile[])
     setLoading(false)
   }
 
   useEffect(() => { load() }, [roleFilter, search])
 
   const toggleActive = async (userId: string, current: boolean) => {
-    const { error } = await supabase.from('user_profiles').update({ is_active: !current }).eq('id', userId)
-    if (error) { toast.error('Failed to update user'); return }
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, updates: { is_active: !current } }),
+    })
+    if (!res.ok) { toast.error('Failed to update user'); return }
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !current } : u))
     toast.success(`User ${!current ? 'activated' : 'deactivated'}`)
   }
 
   const changeRole = async (userId: string, newRole: string) => {
-    const { error } = await supabase.from('user_profiles').update({ role: newRole as UserProfile['role'] }).eq('id', userId)
-    if (error) { toast.error('Failed to update role'); return }
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, updates: { role: newRole } }),
+    })
+    if (!res.ok) { toast.error('Failed to update role'); return }
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole as UserProfile['role'] } : u))
     toast.success('Role updated')
   }

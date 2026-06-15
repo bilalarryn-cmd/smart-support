@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Clock, Pencil } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -30,26 +29,24 @@ export default function AdminSlaPage() {
   const [form, setForm] = useState({ response_hours: 0, resolution_hours: 0, warning_threshold: 80, is_active: true })
   const [saving, setSaving] = useState(false)
   const [creating, setCreating] = useState(false)
-  const supabase = createClient()
 
   useEffect(() => {
-    supabase.from('sla_rules').select('*').order('priority').then(({ data }) => {
-      setRules((data ?? []) as SlaRule[])
+    fetch('/api/admin/sla-rules').then(r => r.json()).then(data => {
+      setRules(data.rules as SlaRule[])
       setLoading(false)
     })
   }, [])
 
   const createCritical = async () => {
     setCreating(true)
-    const { data, error } = await supabase.from('sla_rules').insert({
-      priority: 'critical',
-      response_hours: 1,
-      resolution_hours: 8,
-      warning_threshold: 80,
-      is_active: true,
-    }).select().single()
-    if (error) { toast.error('Failed to create Critical SLA rule'); setCreating(false); return }
-    setRules(prev => [data as SlaRule, ...prev])
+    const res = await fetch('/api/admin/sla-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priority: 'critical', response_hours: 1, resolution_hours: 8, warning_threshold: 80, is_active: true }),
+    })
+    if (!res.ok) { toast.error('Failed to create Critical SLA rule'); setCreating(false); return }
+    const data = await res.json()
+    setRules(prev => [data.rule as SlaRule, ...prev])
     setCreating(false)
     toast.success('Critical SLA rule created')
   }
@@ -67,8 +64,12 @@ export default function AdminSlaPage() {
   const save = async () => {
     if (!editing) return
     setSaving(true)
-    const { error } = await supabase.from('sla_rules').update(form).eq('id', editing.id)
-    if (error) { toast.error('Failed to update SLA rule'); setSaving(false); return }
+    const res = await fetch('/api/admin/sla-rules', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editing.id, updates: form }),
+    })
+    if (!res.ok) { toast.error('Failed to update SLA rule'); setSaving(false); return }
     setRules(prev => prev.map(r => r.id === editing.id ? { ...r, ...form } : r))
     setEditing(null)
     setSaving(false)

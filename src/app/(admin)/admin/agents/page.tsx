@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Shield, Search, UserCheck, UserX, Plus, Trash2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -23,32 +22,26 @@ export default function AdminAgentsPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [addForm, setAddForm] = useState({ full_name: '', email: '', password: '' })
   const [adding, setAdding] = useState(false)
-  const supabase = createClient()
 
   const load = async () => {
-    let q = supabase.from('user_profiles').select('*').eq('role', 'agent').order('full_name')
-    if (search) q = q.ilike('full_name', `%${search}%`)
-    const { data: agentData } = await q
-
-    const agentsWithCounts = await Promise.all(
-      ((agentData ?? []) as UserProfile[]).map(async agent => {
-        const { count } = await supabase
-          .from('tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('assigned_agent_id', agent.id)
-          .not('status', 'in', '(resolved,closed)')
-        return { ...agent, ticket_count: count ?? 0 }
-      })
-    )
-    setAgents(agentsWithCounts)
+    const params = new URLSearchParams()
+    if (search) params.set('search', search)
+    const res = await fetch(`/api/admin/agents?${params}`)
+    if (!res.ok) { setLoading(false); return }
+    const data = await res.json()
+    setAgents(data.agents)
     setLoading(false)
   }
 
   useEffect(() => { load() }, [search])
 
   const toggleActive = async (agentId: string, current: boolean) => {
-    const { error } = await supabase.from('user_profiles').update({ is_active: !current }).eq('id', agentId)
-    if (error) { toast.error('Failed to update agent'); return }
+    const res = await fetch('/api/admin/agents', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId, is_active: !current }),
+    })
+    if (!res.ok) { toast.error('Failed to update agent'); return }
     setAgents(prev => prev.map(a => a.id === agentId ? { ...a, is_active: !current } : a))
     toast.success(`Agent ${!current ? 'activated' : 'deactivated'}`)
   }
@@ -160,7 +153,6 @@ export default function AdminAgentsPage() {
         </div>
       )}
 
-      {/* Add Agent Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader>

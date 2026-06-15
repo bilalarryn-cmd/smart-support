@@ -3,9 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Tag, Plus, Pencil, Trash2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,11 +25,12 @@ export default function AdminCategoriesPage() {
   const [editing, setEditing] = useState<TicketCategory | null>(null)
   const [form, setForm] = useState({ name: '', description: '', color: '#3B82F6', is_active: true })
   const [saving, setSaving] = useState(false)
-  const supabase = createClient()
 
   const load = async () => {
-    const { data } = await supabase.from('ticket_categories').select('*').order('name')
-    setCategories((data ?? []) as TicketCategory[])
+    const res = await fetch('/api/admin/categories')
+    if (!res.ok) { setLoading(false); return }
+    const data = await res.json()
+    setCategories(data.categories as TicketCategory[])
     setLoading(false)
   }
 
@@ -53,30 +53,50 @@ export default function AdminCategoriesPage() {
     setSaving(true)
 
     if (editing) {
-      const { error } = await supabase.from('ticket_categories').update(form).eq('id', editing.id)
-      if (error) { toast.error('Failed to update'); setSaving(false); return }
+      const res = await fetch('/api/admin/categories', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editing.id, updates: form }),
+      })
+      if (!res.ok) { toast.error('Failed to update'); setSaving(false); return }
+      const data = await res.json()
+      setCategories(prev => prev.map(c => c.id === editing.id ? data.category as TicketCategory : c))
       toast.success('Category updated')
     } else {
-      const { error } = await supabase.from('ticket_categories').insert(form)
-      if (error) { toast.error('Failed to create'); setSaving(false); return }
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) { toast.error('Failed to create'); setSaving(false); return }
+      const data = await res.json()
+      setCategories(prev => [...prev, data.category as TicketCategory])
       toast.success('Category created')
     }
 
     setSaving(false)
     setDialogOpen(false)
-    load()
   }
 
   const deleteCategory = async (id: string) => {
     if (!confirm('Delete this category?')) return
-    const { error } = await supabase.from('ticket_categories').delete().eq('id', id)
-    if (error) { toast.error('Cannot delete — category may be in use'); return }
+    const res = await fetch('/api/admin/categories', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) { toast.error('Cannot delete — category may be in use'); return }
     setCategories(prev => prev.filter(c => c.id !== id))
     toast.success('Category deleted')
   }
 
   const toggleActive = async (cat: TicketCategory) => {
-    await supabase.from('ticket_categories').update({ is_active: !cat.is_active }).eq('id', cat.id)
+    const res = await fetch('/api/admin/categories', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: cat.id, updates: { is_active: !cat.is_active } }),
+    })
+    if (!res.ok) return
     setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, is_active: !cat.is_active } : c))
   }
 
