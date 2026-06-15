@@ -1,8 +1,7 @@
-import { Resend } from 'resend'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { deliverEmail } from '@/lib/email/transport'
 import type { Ticket, UserProfile } from '@/types'
 
-const resend = new Resend(process.env.RESEND_API_KEY ?? 're_placeholder')
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
 // FROM must be a Resend-valid address: onboarding@resend.dev or a verified domain.
 // A plain @gmail.com cannot be a Resend sender — use REPLY_TO for the Gmail inbox instead.
@@ -161,17 +160,17 @@ export async function sendTicketCreatedEmail(ticket: Ticket, customer: UserProfi
 
     const toField = `${customer.full_name} <${customerEmail}>`
     const replyTo = await getAdminReplyTo()
-    const { data, error } = await resend.emails.send({
+    const { id, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: toField,
-      ...(replyTo ? { replyTo } : {}),
+      replyTo,
       subject,
       html,
     })
 
-    const success = !error && !!data?.id
-    await logEmail({ ticketId: ticket.id, recipientEmail: customerEmail, recipientName: customer.full_name, subject, templateType: 'ticket_created', status: success ? 'sent' : 'failed', resendMessageId: data?.id, errorMessage: error?.message })
-    return { success, messageId: data?.id }
+    const success = !error && !!id
+    await logEmail({ ticketId: ticket.id, recipientEmail: customerEmail, recipientName: customer.full_name, subject, templateType: 'ticket_created', status: success ? 'sent' : 'failed', resendMessageId: id, errorMessage: error })
+    return { success, messageId: id }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     await logEmail({ ticketId: ticket.id, recipientEmail: customer.id, recipientName: customer.full_name, subject, templateType: 'ticket_created', status: 'failed', errorMessage: msg })
@@ -196,15 +195,15 @@ export async function sendEmailWithTemplate({
 }): Promise<EmailResult> {
   try {
     const replyTo = await getAdminReplyTo()
-    const { data, error } = await resend.emails.send({
+    const { id, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: toName ? `${toName} <${to}>` : to,
-      ...(replyTo ? { replyTo } : {}),
+      replyTo,
       subject,
       html,
     })
 
-    const success = !error && !!data?.id
+    const success = !error && !!id
     await logEmail({
       ticketId,
       recipientEmail: to,
@@ -212,10 +211,10 @@ export async function sendEmailWithTemplate({
       subject,
       templateType,
       status: success ? 'sent' : 'failed',
-      resendMessageId: data?.id,
-      errorMessage: error?.message,
+      resendMessageId: id,
+      errorMessage: error,
     })
-    return { success, messageId: data?.id }
+    return { success, messageId: id }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     await logEmail({ ticketId, recipientEmail: to, recipientName: toName, subject, templateType, status: 'failed', errorMessage: msg })
