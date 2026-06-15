@@ -67,7 +67,7 @@ export default function CustomerDashboardPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-8">
         <StatCard title="Total" value={all.length} icon={TicketCheck} color="blue" />
         <StatCard title="New" value={newTickets.length} icon={Inbox} color="amber" />
         <StatCard title="Open" value={open.length} icon={Clock} color="green" />

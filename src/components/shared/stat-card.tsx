@@ -46,7 +46,7 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, color = 'b
   return (
     <div
       className={cn(
-        'rounded-[14px] p-5 flex gap-4 items-start transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5',
+        'rounded-[14px] p-3.5 sm:p-5 flex gap-3 sm:gap-4 items-center transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5',
         variant === 'solid'
           ? 'text-white shadow-[0_5px_20px_rgba(0,0,0,0.15)]'
           : `bg-white border border-[#E5E7EB] shadow-[0_5px_20px_rgba(0,0,0,0.08)] ${c.bg}`,
@@ -54,12 +54,12 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, color = 'b
       )}
       style={variant === 'solid' ? { background: 'linear-gradient(90deg, #1E63FF, #6A5BFF)' } : undefined}
     >
-      <div className={cn('rounded-[10px] p-2.5 shrink-0', c.iconBg)}>
-        <Icon className={cn('h-5 w-5', c.icon)} />
+      <div className={cn('rounded-[10px] p-2 sm:p-2.5 shrink-0', c.iconBg)}>
+        <Icon className={cn('h-4 w-4 sm:h-5 sm:w-5', c.icon)} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', c.title)}>{title}</p>
-        <p className={cn('text-2xl font-bold mt-0.5', c.value)}>{value}</p>
+        <p className={cn('text-xs sm:text-sm font-medium leading-tight', c.title)}>{title}</p>
+        <p className={cn('text-xl sm:text-2xl font-bold mt-0.5', c.value)}>{value}</p>
         {subtitle && <p className={cn('text-xs mt-0.5 opacity-70', c.title)}>{subtitle}</p>}
         {trend && (
           <p className={cn('text-xs font-medium mt-1', variant === 'solid' ? 'text-white/80' : trend.value >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]')}>
