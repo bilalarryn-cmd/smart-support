@@ -48,7 +48,14 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user: { user_metadata?: { role?: string } } | null = null
+  try {
+    const result = await supabase.auth.getUser()
+    user = result.data.user
+  } catch {
+    // Network error in Edge runtime — fall through; server layouts handle auth
+    return supabaseResponse
+  }
 
   const publicPaths = ['/login', '/admin-login', '/signup', '/forgot-password', '/reset-password', '/api/health', '/api/cron', '/api/categories', '/api/admin']
   const isPublicPath = publicPaths.some(p => pathname.startsWith(p))

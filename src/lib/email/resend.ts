@@ -4,7 +4,44 @@ import type { Ticket, UserProfile } from '@/types'
 
 const resend = new Resend(process.env.RESEND_API_KEY ?? 're_placeholder')
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000'
-const FROM_EMAIL = 'Smart Support <support@smartsupport.app>'
+// FROM must be a Resend-valid address: onboarding@resend.dev or a verified domain.
+// A plain @gmail.com cannot be a Resend sender — use REPLY_TO for the Gmail inbox instead.
+const FROM_EMAIL = process.env.EMAIL_FROM ?? 'Smart Support <onboarding@resend.dev>'
+// Customer replies land in the admin's inbox. We look this up from the DB
+// (whoever is the admin), and fall back to EMAIL_REPLY_TO if none is found.
+const REPLY_TO_FALLBACK = process.env.EMAIL_REPLY_TO || undefined
+
+// Cache the admin email for a short time so we don't hit the DB on every send.
+let _adminEmailCache: { email: string | undefined; at: number } | null = null
+const ADMIN_EMAIL_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+async function getAdminReplyTo(): Promise<string | undefined> {
+  if (_adminEmailCache && Date.now() - _adminEmailCache.at < ADMIN_EMAIL_TTL_MS) {
+    return _adminEmailCache.email ?? REPLY_TO_FALLBACK
+  }
+  try {
+    const db = createAdminClient()
+    // Oldest active admin = the one who set up the platform.
+    const { data: admin } = await db
+      .from('user_profiles')
+      .select('id')
+      .eq('role', 'admin')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    let email: string | undefined
+    if (admin?.id) {
+      const { data: authUser } = await db.auth.admin.getUserById(admin.id)
+      email = authUser.user?.email ?? undefined
+    }
+    _adminEmailCache = { email, at: Date.now() }
+    return email ?? REPLY_TO_FALLBACK
+  } catch {
+    return REPLY_TO_FALLBACK
+  }
+}
 
 interface EmailResult {
   success: boolean
@@ -123,9 +160,11 @@ export async function sendTicketCreatedEmail(ticket: Ticket, customer: UserProfi
     if (!customerEmail) return { success: false, error: 'No email found for customer' }
 
     const toField = `${customer.full_name} <${customerEmail}>`
+    const replyTo = await getAdminReplyTo()
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: toField,
+      ...(replyTo ? { replyTo } : {}),
       subject,
       html,
     })
@@ -156,9 +195,11 @@ export async function sendEmailWithTemplate({
   templateType: string
 }): Promise<EmailResult> {
   try {
+    const replyTo = await getAdminReplyTo()
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: toName ? `${toName} <${to}>` : to,
+      ...(replyTo ? { replyTo } : {}),
       subject,
       html,
     })
