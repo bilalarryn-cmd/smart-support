@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmailWithTemplate, notifyTeam } from '@/lib/email/resend'
+import { notifyTeam } from '@/lib/email/resend'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -86,21 +86,10 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Send ticket created email (fire-and-forget)
+  // Ticket-created notification (fire-and-forget).
+  // The creator does NOT receive a confirmation of their own ticket — only
+  // the support team (admins + agents) is notified, excluding the creator.
   try {
-    const { data: authUser } = await db.auth.admin.getUserById(user.id)
-    const customerEmail = authUser.user?.email
-    const { data: profile } = await db.from('user_profiles').select('full_name').eq('id', user.id).single()
-    const customerName = (profile as { full_name?: string })?.full_name ?? 'Customer'
-
-    if (customerEmail) {
-      const subject = `Ticket #${data.ticket_number} Created — ${data.subject}`
-      const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f0f4ff;padding:20px"><div style="max-width:600px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(59,130,246,.12)"><div style="background:linear-gradient(135deg,#1e40af,#3b82f6);padding:32px;text-align:center"><h1 style="color:white;margin:0;font-size:22px">🎯 Smart Support</h1></div><div style="padding:32px"><h2 style="color:#1e40af">Your ticket has been created!</h2><p>Hi ${customerName},</p><p>We've received your support request and our team will be in touch shortly.</p><div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:20px;margin:20px 0"><h3 style="color:#1e40af;margin:0 0 12px">Ticket #${data.ticket_number}</h3><p style="font-weight:600;color:#374151">${data.subject}</p></div><p><a href="${process.env.APP_URL ?? 'https://smart-support-beta.vercel.app'}/tickets/${data.id}" style="display:inline-block;background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600">View Ticket</a></p></div></div></body></html>`
-      await sendEmailWithTemplate({ to: customerEmail, toName: customerName, subject, html, ticketId: data.id, templateType: 'ticket_created' })
-    }
-
-    // Notify the support team (admins + agents). Exclude the creator in case
-    // an agent/admin created the ticket on a customer's behalf.
     await notifyTeam({ subject: `Ticket #${data.ticket_number} Created — ${data.subject}`, html: `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#f0f4ff;padding:20px"><div style="max-width:600px;margin:0 auto;background:white;border-radius:16px;overflow:hidden"><div style="background:linear-gradient(135deg,#1e40af,#3b82f6);padding:24px;text-align:center"><h1 style="color:white;margin:0;font-size:20px">🎯 Smart Support — New Ticket</h1></div><div style="padding:24px"><p>A new ticket has been created.</p><div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:16px"><h3 style="color:#1e40af;margin:0 0 8px">Ticket #${data.ticket_number}</h3><p style="font-weight:600">${data.subject}</p></div><p><a href="${process.env.APP_URL ?? 'https://smart-support-beta.vercel.app'}/agent/tickets/${data.id}" style="display:inline-block;background:#1e40af;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Open in Queue</a></p></div></div></body></html>`, ticketId: data.id, templateType: 'ticket_created', excludeUserId: user.id })
   } catch { /* email failure should not block ticket creation */ }
 
