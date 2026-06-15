@@ -51,7 +51,6 @@ function timelineIcon(action: string) {
   if (action.includes('status')) return <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center"><Tag className="h-4 w-4 text-purple-600" /></div>
   if (action.includes('assign')) return <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center"><UserCheck className="h-4 w-4 text-emerald-600" /></div>
   if (action.includes('sla')) return <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center"><AlertTriangle className="h-4 w-4 text-red-600" /></div>
-  if (action.includes('closed') || action.includes('resolved')) return <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><CheckCircle className="h-4 w-4 text-slate-500" /></div>
   return <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><Clock className="h-4 w-4 text-slate-500" /></div>
 }
 
@@ -59,13 +58,13 @@ function timelineLabel(entry: AuditEntry): string {
   const nv = entry.new_values ?? {}
   const ov = entry.old_values ?? {}
   if (entry.action === 'ticket.created') return 'Ticket created'
-  if (entry.action === 'ticket.status_changed') return `Status changed from "${String(ov.status ?? '').replace(/_/g, ' ')}" to "${String(nv.status ?? '').replace(/_/g, ' ')}"`
-  if (entry.action === 'ticket.assigned') return `Assigned to agent`
+  if (entry.action === 'ticket.status_changed') return `Status: "${String(ov.status ?? '').replace(/_/g, ' ')}" → "${String(nv.status ?? '').replace(/_/g, ' ')}"`
+  if (entry.action === 'ticket.assigned') return 'Assigned to agent'
   if (entry.action === 'ticket.sla_breached') return 'SLA deadline breached'
-  if (entry.action === 'ticket.auto_closed') return 'Ticket auto-closed after resolution'
+  if (entry.action === 'ticket.auto_closed') return 'Auto-closed after resolution'
   if (entry.action === 'ticket.duplicate_detected') return 'Flagged as possible duplicate'
-  if (entry.action === 'ticket.closed') return 'Ticket closed'
-  if (entry.action === 'ticket.resolved') return 'Ticket resolved'
+  if (entry.action === 'ticket.note_added') return 'Internal note added'
+  if (entry.action === 'ticket.message_sent') return 'Reply sent to customer'
   return entry.action.replace('ticket.', '').replace(/_/g, ' ')
 }
 
@@ -84,7 +83,8 @@ export default function AgentTicketDetailPage() {
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null)
   const [agents, setAgents] = useState<UserProfile[]>([])
   const [cannedResponses, setCannedResponses] = useState<CannedResponse[]>([])
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string>('Agent')
   const [replyText, setReplyText] = useState('')
   const [noteText, setNoteText] = useState('')
   const [replyFiles, setReplyFiles] = useState<File[]>([])
@@ -95,44 +95,53 @@ export default function AgentTicketDetailPage() {
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) { router.push('/login'); return }
+    setCurrentUserId(user.id)
 
-    const [profileRes, ticketRes] = await Promise.all([
-      supabase.from('user_profiles').select('*').eq('id', user.id).single(),
-      supabase.from('tickets').select('*, category:ticket_categories(name, color), customer:user_profiles!customer_id(*)').eq('id', id).single(),
+    // All data via API routes (service role — bypasses RLS)
+    const [ticketRes, msgRes, noteRes, attRes, auditRes, emailLogRes, resourcesRes] = await Promise.all([
+      fetch(`/api/tickets/${id}`),
+      fetch(`/api/tickets/${id}/messages`),
+      fetch(`/api/tickets/${id}/notes`),
+      fetch(`/api/tickets/${id}/attachments`),
+      fetch(`/api/tickets/${id}/audit`),
+      fetch(`/api/tickets/${id}/email-logs`),
+      fetch('/api/agent/resources'),
     ])
 
-    if (!ticketRes.data) { router.push('/agent/queue'); return }
+    if (!ticketRes.ok) { router.push('/agent/queue'); return }
 
-    setCurrentUser(profileRes.data as UserProfile)
-    setTicket(ticketRes.data as Ticket & { category?: { name: string; color: string }; customer?: UserProfile })
+    const ticketData = await ticketRes.json() as Ticket & { category?: { name: string; color: string }; customer?: UserProfile }
+    setTicket(ticketData)
 
-    const [msgRes, noteRes, attRes, slaRes, emailRes, agentsRes, timelineRes, cannedRes] = await Promise.all([
-      supabase.from('ticket_messages').select('*, sender:user_profiles(*)').eq('ticket_id', id).order('created_at'),
-      supabase.from('ticket_internal_notes').select('*, author:user_profiles(*)').eq('ticket_id', id).order('created_at'),
-      supabase.from('ticket_attachments').select('*').eq('ticket_id', id).order('created_at'),
-      supabase.from('sla_rules').select('*').eq('priority', ticketRes.data.priority).eq('is_active', true).single(),
-      supabase.from('email_logs').select('*').eq('ticket_id', id).order('sent_at', { ascending: false }),
-      supabase.from('user_profiles').select('*').eq('role', 'agent').eq('is_active', true),
-      supabase.from('audit_logs').select('*').eq('entity_type', 'ticket').eq('entity_id', id).order('created_at'),
-      supabase.from('canned_responses').select('id, title, content, category').eq('is_active', true).order('category').order('title'),
-    ])
-
-    setMessages((msgRes.data ?? []) as (TicketMessage & { sender?: UserProfile })[])
-    setNotes((noteRes.data ?? []) as (TicketInternalNote & { author?: UserProfile })[])
-    setAttachments((attRes.data ?? []) as TicketAttachment[])
-    setSlaRule(slaRes.data as SlaRule | null)
-    setEmailLogs((emailRes.data ?? []) as EmailLog[])
-    setAgents((agentsRes.data ?? []) as UserProfile[])
-    setTimeline((timelineRes.data ?? []) as AuditEntry[])
-    setCannedResponses((cannedRes.data ?? []) as CannedResponse[])
-
-    if (ticketRes.data.country_code) {
-      const { data: country } = await supabase.from('country_info_cache').select('*').eq('country_code', ticketRes.data.country_code).single()
-      setCountryInfo(country as CountryInfo | null)
+    if (msgRes.ok) setMessages(await msgRes.json())
+    if (noteRes.ok) setNotes(await noteRes.json())
+    if (attRes.ok) setAttachments(await attRes.json())
+    if (auditRes.ok) setTimeline(await auditRes.json())
+    if (emailLogRes.ok) setEmailLogs(await emailLogRes.json())
+    if (resourcesRes.ok) {
+      const r = await resourcesRes.json()
+      setAgents(r.agents ?? [])
+      setCannedResponses(r.cannedResponses ?? [])
+      const me = (r.agents ?? []).find((a: UserProfile) => a.id === user.id)
+      if (me) setCurrentUserName(me.full_name)
     }
 
     setLoading(false)
+
+    // Background: SLA + country
+    if (ticketData.priority) {
+      fetch(`/api/sla?priority=${ticketData.priority}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setSlaRule(d) })
+        .catch(() => null)
+    }
+    if (ticketData.country_code) {
+      fetch(`/api/countries/${ticketData.country_code}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setCountryInfo(d) })
+        .catch(() => null)
+    }
   }, [id])
 
   useEffect(() => { load() }, [load])
@@ -140,136 +149,116 @@ export default function AgentTicketDetailPage() {
   const applyCanned = (r: CannedResponse) => {
     const filled = r.content
       .replace(/\{\{customer_name\}\}/g, ticket?.customer?.full_name ?? 'Customer')
-      .replace(/\{\{agent_name\}\}/g, currentUser?.full_name ?? 'Support Team')
+      .replace(/\{\{agent_name\}\}/g, currentUserName)
     setReplyText(filled)
     setShowCanned(false)
   }
 
   const sendReply = async () => {
-    if (!replyText.trim() || !ticket || !currentUser) return
+    if (!replyText.trim() || !ticket || !currentUserId) return
     setSending(true)
 
-    const { data: message, error } = await supabase.from('ticket_messages').insert({
-      ticket_id: ticket.id,
-      sender_id: currentUser.id,
-      content: replyText,
-      is_internal: false,
-    }).select('*, sender:user_profiles(*)').single()
+    // Use API route — it handles email notification + audit log + first_response_at internally
+    const res = await fetch(`/api/tickets/${ticket.id}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: replyText, is_internal: false }),
+    })
 
-    if (error) { toast.error('Failed to send reply'); setSending(false); return }
+    if (!res.ok) { toast.error('Failed to send reply'); setSending(false); return }
+    const message = await res.json() as TicketMessage & { sender?: UserProfile }
 
-    if (!ticket.first_response_at) {
-      await supabase.from('tickets').update({ first_response_at: new Date().toISOString(), status: 'open' }).eq('id', ticket.id)
-      setTicket(prev => prev ? { ...prev, first_response_at: new Date().toISOString(), status: 'open' } : prev)
-    }
-
+    // Upload attachments via storage (directly, storage bucket has permissive upload policy)
     for (const file of replyFiles) {
       const path = `tickets/${ticket.id}/${Date.now()}-${file.name}`
       const { data: up } = await supabase.storage.from('attachments').upload(path, file)
       if (up) {
         const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(up.path)
-        await supabase.from('ticket_attachments').insert({
-          ticket_id: ticket.id, message_id: message.id, uploaded_by: currentUser.id,
-          file_name: file.name, file_url: publicUrl, file_size: file.size, mime_type: file.type,
+        await fetch(`/api/tickets/${ticket.id}/attachments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message_id: message.id, file_name: file.name, file_url: publicUrl, file_size: file.size, mime_type: file.type }),
         })
       }
     }
 
-    // Audit
-    await supabase.from('audit_logs').insert({
-      user_id: currentUser.id,
-      action: 'ticket.message_sent',
-      entity_type: 'ticket',
-      entity_id: ticket.id,
-      new_values: { sender: currentUser.full_name, role: currentUser.role },
-    })
-
-    setMessages(prev => [...prev, message as TicketMessage & { sender?: UserProfile }])
+    setMessages(prev => [...prev, message])
+    // Update local ticket state if API changed first_response_at / status
+    if (!ticket.first_response_at) {
+      setTicket(prev => prev ? { ...prev, first_response_at: new Date().toISOString(), status: 'open' } : prev)
+    }
     setReplyText('')
     setReplyFiles([])
     setSending(false)
     toast.success('Reply sent!')
-
-    await fetch('/api/tickets/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketId: ticket.id, type: 'agent_reply', content: replyText, agentName: currentUser.full_name }),
-    }).catch(() => null)
   }
 
   const addNote = async () => {
-    if (!noteText.trim() || !ticket || !currentUser) return
+    if (!noteText.trim() || !ticket) return
     setAddingNote(true)
 
-    const { data: note, error } = await supabase.from('ticket_internal_notes').insert({
-      ticket_id: ticket.id,
-      author_id: currentUser.id,
-      content: noteText,
-    }).select('*, author:user_profiles(*)').single()
+    const res = await fetch(`/api/tickets/${ticket.id}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: noteText }),
+    })
 
-    if (error) { toast.error('Failed to add note'); setAddingNote(false); return }
-
-    setNotes(prev => [...prev, note as TicketInternalNote & { author?: UserProfile }])
+    if (!res.ok) { toast.error('Failed to add note'); setAddingNote(false); return }
+    const note = await res.json() as TicketInternalNote & { author?: UserProfile }
+    setNotes(prev => [...prev, note])
     setNoteText('')
     setAddingNote(false)
     toast.success('Note added!')
   }
 
   const changeStatus = async (newStatus: string) => {
-    if (!ticket || !currentUser) return
-    const updates: Partial<Ticket> = { status: newStatus as Ticket['status'] }
-    if (newStatus === 'resolved') updates.resolved_at = new Date().toISOString()
-    if (newStatus === 'closed') updates.closed_at = new Date().toISOString()
+    if (!ticket) return
+    const oldStatus = ticket.status
 
-    await supabase.from('tickets').update(updates).eq('id', ticket.id)
-    await supabase.from('audit_logs').insert({
-      user_id: currentUser.id,
-      action: 'ticket.status_changed',
-      entity_type: 'ticket',
-      entity_id: ticket.id,
-      old_values: { status: ticket.status },
-      new_values: { status: newStatus },
+    // PATCH route handles email + audit log
+    const res = await fetch(`/api/tickets/${ticket.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
     })
+    if (!res.ok) { toast.error('Failed to update status'); return }
 
-    setTicket(prev => prev ? { ...prev, ...updates } : prev)
+    setTicket(prev => prev ? { ...prev, status: newStatus as Ticket['status'] } : prev)
     setTimeline(prev => [...prev, {
       id: crypto.randomUUID(),
       action: 'ticket.status_changed',
       entity_type: 'ticket',
       entity_id: ticket.id,
-      old_values: { status: ticket.status },
+      old_values: { status: oldStatus },
       new_values: { status: newStatus },
       created_at: new Date().toISOString(),
     }])
-    toast.success(`Status changed to ${newStatus.replace(/_/g, ' ')}`)
-
-    await fetch('/api/tickets/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketId: ticket.id, type: 'status_change', newStatus, oldStatus: ticket.status }),
-    }).catch(() => null)
+    toast.success(`Status → ${newStatus.replace(/_/g, ' ')}`)
   }
 
   const assignTicket = async (agentId: string) => {
-    if (!ticket || !currentUser) return
-    await supabase.from('tickets').update({ assigned_agent_id: agentId, status: 'open' }).eq('id', ticket.id)
-    await supabase.from('ticket_assignments').insert({
-      ticket_id: ticket.id,
-      assigned_from: ticket.assigned_agent_id,
-      assigned_to: agentId,
-      assigned_by: currentUser.id,
+    if (!ticket || !currentUserId) return
+
+    const res = await fetch(`/api/tickets/${ticket.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assigned_agent_id: agentId, status: 'open' }),
     })
-    await supabase.from('audit_logs').insert({
-      user_id: currentUser.id,
-      action: 'ticket.assigned',
-      entity_type: 'ticket',
-      entity_id: ticket.id,
-      old_values: { agent_id: ticket.assigned_agent_id },
-      new_values: { agent_id: agentId },
+    if (!res.ok) { toast.error('Failed to assign ticket'); return }
+
+    // Also log the assignment
+    await fetch(`/api/tickets/${ticket.id}/audit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'ticket.assigned',
+        old_values: { agent_id: ticket.assigned_agent_id },
+        new_values: { agent_id: agentId },
+      }),
     })
 
     const agent = agents.find(a => a.id === agentId)
-    setTicket(prev => prev ? { ...prev, assigned_agent_id: agentId } : prev)
+    setTicket(prev => prev ? { ...prev, assigned_agent_id: agentId, status: 'open' } : prev)
     toast.success(`Assigned to ${agent?.full_name ?? 'agent'}`)
   }
 
@@ -295,20 +284,16 @@ export default function AgentTicketDetailPage() {
           <Tabs defaultValue="conversation">
             <TabsList className="mb-4">
               <TabsTrigger value="conversation">
-                <Send className="h-4 w-4" />
-                Conversation ({messages.length})
+                <Send className="h-4 w-4" /> Conversation ({messages.length})
               </TabsTrigger>
               <TabsTrigger value="notes">
-                <StickyNote className="h-4 w-4" />
-                Notes ({notes.length})
+                <StickyNote className="h-4 w-4" /> Notes ({notes.length})
               </TabsTrigger>
               <TabsTrigger value="timeline">
-                <History className="h-4 w-4" />
-                Timeline ({timeline.length})
+                <History className="h-4 w-4" /> Timeline ({timeline.length})
               </TabsTrigger>
               <TabsTrigger value="emails">
-                <Mail className="h-4 w-4" />
-                Emails
+                <Mail className="h-4 w-4" /> Emails ({emailLogs.length})
               </TabsTrigger>
             </TabsList>
 
@@ -357,7 +342,6 @@ export default function AgentTicketDetailPage() {
 
                   {/* Reply box */}
                   <div className="pt-4 border-t border-slate-100">
-                    {/* Canned responses picker */}
                     <div className="relative mb-3">
                       <button
                         type="button"
@@ -378,11 +362,7 @@ export default function AgentTicketDetailPage() {
                               <div key={cat}>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pt-3 pb-1 capitalize">{cat}</p>
                                 {items.map(r => (
-                                  <button
-                                    key={r.id}
-                                    onClick={() => applyCanned(r)}
-                                    className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors"
-                                  >
+                                  <button key={r.id} onClick={() => applyCanned(r)} className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors">
                                     <p className="text-sm font-medium text-slate-800">{r.title}</p>
                                     <p className="text-xs text-slate-400 truncate mt-0.5">{r.content.split('\n')[0]}</p>
                                   </button>
@@ -464,7 +444,6 @@ export default function AgentTicketDetailPage() {
                     <p className="text-center text-slate-400 text-sm py-8">No activity recorded yet</p>
                   ) : (
                     <div className="relative">
-                      {/* Vertical line */}
                       <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-slate-100" />
                       <div className="space-y-6">
                         {timeline.map((entry, i) => (
@@ -476,13 +455,6 @@ export default function AgentTicketDetailPage() {
                                 <p className="text-xs text-slate-500 mt-0.5">by {entry.user.full_name} <span className="capitalize">({entry.user.role})</span></p>
                               )}
                               <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(entry.created_at)}</p>
-                              {entry.new_values && Object.keys(entry.new_values).length > 0 && (
-                                <div className="mt-2 bg-slate-50 rounded-lg px-3 py-2 text-xs text-slate-500 font-mono">
-                                  {Object.entries(entry.new_values).map(([k, v]) => (
-                                    <div key={k}><span className="text-slate-400">{k}:</span> {String(v)}</div>
-                                  ))}
-                                </div>
-                              )}
                             </div>
                           </div>
                         ))}
@@ -564,7 +536,7 @@ export default function AgentTicketDetailPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Customer</span>
-                <span className="text-slate-700 font-medium">{ticket.customer?.full_name}</span>
+                <span className="text-slate-700 font-medium">{ticket.customer?.full_name ?? '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Created</span>
@@ -574,6 +546,14 @@ export default function AgentTicketDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-slate-500">First Response</span>
                   <span className="text-slate-700 text-xs">{formatRelativeTime(ticket.first_response_at)}</span>
+                </div>
+              )}
+              {ticket.assigned_agent_id && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Assigned To</span>
+                  <span className="text-slate-700 text-xs">
+                    {agents.find(a => a.id === ticket.assigned_agent_id)?.full_name ?? '—'}
+                  </span>
                 </div>
               )}
             </CardContent>
@@ -592,8 +572,7 @@ export default function AgentTicketDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-4 w-4" />
-                  Customer Country
+                  <Globe className="h-4 w-4" /> Customer Country
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
@@ -601,7 +580,7 @@ export default function AgentTicketDetailPage() {
                   <img src={getFlagImageUrl(countryInfo.country_code)} alt={countryInfo.name} width={28} height={21} className="rounded-sm" />
                   <span className="font-medium">{countryInfo.name}</span>
                 </div>
-                {countryInfo.currency_code && <div className="flex justify-between"><span className="text-slate-500">Currency</span><span>{countryInfo.currency_code}</span></div>}
+                {countryInfo.currency_code && <div className="flex justify-between"><span className="text-slate-500">Currency</span><span>{countryInfo.currency_code} — {countryInfo.currency_name}</span></div>}
                 {countryInfo.calling_code && <div className="flex justify-between"><span className="text-slate-500">Phone</span><span>{countryInfo.calling_code}</span></div>}
                 {countryInfo.language && <div className="flex justify-between"><span className="text-slate-500">Language</span><span>{countryInfo.language}</span></div>}
                 {countryInfo.region && <div className="flex justify-between"><span className="text-slate-500">Region</span><span>{countryInfo.region}</span></div>}
@@ -626,6 +605,14 @@ export default function AgentTicketDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          <div>
+            <Link href={`/agent/assigned`}>
+              <Button variant="outline" size="sm" className="w-full">
+                <UserPlus className="h-4 w-4" /> Back to Assigned
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

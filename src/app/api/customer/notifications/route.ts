@@ -17,7 +17,7 @@ export async function GET() {
       .order('updated_at', { ascending: false })
       .limit(20),
     db
-      .from('messages')
+      .from('ticket_messages')
       .select('id, content, created_at, ticket_id, sender:user_profiles!sender_id(role)')
       .neq('sender_id', user.id)
       .order('created_at', { ascending: false })

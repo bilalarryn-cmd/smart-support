@@ -10,10 +10,9 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
   const db = createAdminClient()
   const { data, error } = await db
-    .from('audit_logs')
-    .select('*, user:user_profiles(full_name, role)')
-    .eq('entity_type', 'ticket')
-    .eq('entity_id', id)
+    .from('ticket_internal_notes')
+    .select('*, author:user_profiles(*)')
+    .eq('ticket_id', id)
     .order('created_at')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -27,16 +26,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
+  if (!body.content?.trim()) return NextResponse.json({ error: 'Content required' }, { status: 400 })
+
   const db = createAdminClient()
+  const { data, error } = await db
+    .from('ticket_internal_notes')
+    .insert({ ticket_id: id, author_id: user.id, content: body.content })
+    .select('*, author:user_profiles(*)')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await db.from('audit_logs').insert({
     user_id: user.id,
-    action: body.action,
+    action: 'ticket.note_added',
     entity_type: 'ticket',
     entity_id: id,
-    old_values: body.old_values ?? null,
-    new_values: body.new_values ?? null,
+    new_values: { note_id: data.id },
   })
 
-  return NextResponse.json({ success: true }, { status: 201 })
+  return NextResponse.json(data, { status: 201 })
 }
