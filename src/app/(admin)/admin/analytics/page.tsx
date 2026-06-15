@@ -12,7 +12,7 @@ export default async function AdminAnalyticsPage() {
   
 
   const [ticketsRes, emailRes, agentRes] = await Promise.all([
-    supabase.from('tickets').select('id, status, priority, category_id, assigned_agent_id, first_response_at, created_at, sla_breached, category:ticket_categories(name), assigned_agent:user_profiles!assigned_agent_id(full_name)'),
+    supabase.from('tickets').select('id, status, priority, category_id, assigned_agent_id, first_response_at, created_at, sla_breached, country_code, category:ticket_categories(name), assigned_agent:user_profiles!assigned_agent_id(full_name)'),
     supabase.from('email_logs').select('status, template_type, sent_at'),
     supabase.from('user_profiles').select('id, full_name, role'),
   ])
