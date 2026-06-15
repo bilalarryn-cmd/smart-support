@@ -57,12 +57,21 @@ export async function deliverEmail({
       // Gmail rewrites the From to the authenticated account, so we present a
       // friendly display name but keep the real Gmail address as the sender.
       const fromHeader = from.includes('<') ? from : `Smart Support <${GMAIL_USER}>`
+      // A plain-text alternative alongside the HTML improves deliverability and
+      // keeps Gmail from flagging HTML-only mail as spam.
+      const text = html
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
       const info = await getGmailTransport().sendMail({
         from: fromHeader,
         to,
         replyTo: replyTo ?? GMAIL_USER,
         subject,
         html,
+        text,
+        headers: { 'X-Entity-Ref-ID': `smart-support-${Date.now()}` },
       })
       return { id: info.messageId }
     } catch (err) {
