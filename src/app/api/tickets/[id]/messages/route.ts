@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmailWithTemplate, buildAgentReplyHtml } from '@/lib/email/resend'
+import { sendEmailWithTemplate, buildAgentReplyHtml, notifyTeam } from '@/lib/email/resend'
 
 async function getCustomerEmail(customerId: string): Promise<string> {
   const db = createAdminClient()
@@ -73,16 +73,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const customerName = (ticket.customer as { full_name?: string })?.full_name ?? 'Customer'
       const senderName = (data.sender as { full_name?: string })?.full_name ?? 'Support Team'
 
+      const replyHtml = buildAgentReplyHtml(ticket, body.content, senderName)
+      const replySubject = `New Reply — Ticket #${ticket.ticket_number}: ${ticket.subject}`
+
       if (customerEmail) {
         await sendEmailWithTemplate({
           to: customerEmail,
           toName: customerName,
-          subject: `New Reply — Ticket #${ticket.ticket_number}: ${ticket.subject}`,
-          html: buildAgentReplyHtml(ticket, body.content, senderName),
+          subject: replySubject,
+          html: replyHtml,
           ticketId: id,
           templateType: 'agent_reply',
         })
       }
+
+      // Notify the rest of the team (admins + agents), excluding the replier.
+      await notifyTeam({ subject: replySubject, html: replyHtml, ticketId: id, templateType: 'agent_reply', excludeUserId: user.id })
 
       // Also update ticket status to open if it was new
       if (ticket.status === 'new') {

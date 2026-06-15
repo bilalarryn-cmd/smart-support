@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendEmailWithTemplate, buildStatusChangeHtml, buildTicketClosedHtml } from '@/lib/email/resend'
+import { sendEmailWithTemplate, buildStatusChangeHtml, buildTicketClosedHtml, notifyTeam } from '@/lib/email/resend'
 
 async function getCustomerEmail(customerId: string): Promise<string> {
   const db = createAdminClient()
@@ -69,27 +69,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const customerEmail = await getCustomerEmail(oldTicket.customer_id)
     const customerName = (oldTicket.customer as { full_name?: string })?.full_name ?? 'Customer'
 
+    const isFinal = body.status === 'closed' || body.status === 'resolved'
+    const statusSubject = isFinal
+      ? `Ticket #${oldTicket.ticket_number} has been ${body.status}`
+      : `Status Update — Ticket #${oldTicket.ticket_number}`
+    const statusHtml = isFinal
+      ? buildTicketClosedHtml(data)
+      : buildStatusChangeHtml(data, body.status, oldTicket.status)
+    const statusTemplate = isFinal ? (body.status === 'closed' ? 'ticket_closed' : 'ticket_resolved') : 'status_change'
+
     if (customerEmail) {
-      if (body.status === 'closed' || body.status === 'resolved') {
-        await sendEmailWithTemplate({
-          to: customerEmail,
-          toName: customerName,
-          subject: `Ticket #${oldTicket.ticket_number} has been ${body.status}`,
-          html: buildTicketClosedHtml(data),
-          ticketId: id,
-          templateType: body.status === 'closed' ? 'ticket_closed' : 'ticket_resolved',
-        })
-      } else {
-        await sendEmailWithTemplate({
-          to: customerEmail,
-          toName: customerName,
-          subject: `Status Update — Ticket #${oldTicket.ticket_number}`,
-          html: buildStatusChangeHtml(data, body.status, oldTicket.status),
-          ticketId: id,
-          templateType: 'status_change',
-        })
-      }
+      await sendEmailWithTemplate({
+        to: customerEmail,
+        toName: customerName,
+        subject: statusSubject,
+        html: statusHtml,
+        ticketId: id,
+        templateType: statusTemplate,
+      })
     }
+
+    // Notify the team (admins + agents), excluding whoever made the change.
+    await notifyTeam({ subject: statusSubject, html: statusHtml, ticketId: id, templateType: statusTemplate, excludeUserId: user.id })
   }
 
   return NextResponse.json(data)

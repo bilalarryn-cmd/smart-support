@@ -115,14 +115,18 @@ export async function POST(request: NextRequest) {
       const isBreached = now > dueAt
       const isWarning = !isBreached && percentage >= slaRule.warning_threshold
 
-      // SLA escalations go to admins only — not to the assigned agent.
-      const adminEmails: string[] = []
+      // SLA escalations go to admins and the ticket's customer — not the agent.
+      const escalationEmails: string[] = []
 
       const { data: admins } = await supabase.from('user_profiles').select('id').eq('role', 'admin').eq('is_active', true)
       for (const admin of (admins ?? [])) {
         const { data: adminAuth } = await supabase.auth.admin.getUserById(admin.id)
-        if (adminAuth.user?.email) adminEmails.push(adminAuth.user.email)
+        if (adminAuth.user?.email) escalationEmails.push(adminAuth.user.email)
       }
+
+      // Add the customer (ticket creator) so they know their ticket is at risk.
+      const { data: custAuth } = await supabase.auth.admin.getUserById(ticket.customer_id)
+      if (custAuth.user?.email) escalationEmails.push(custAuth.user.email)
 
       // === SLA BREACH ===
       if (isBreached && !ticket.sla_breached) {
@@ -131,8 +135,8 @@ export async function POST(request: NextRequest) {
         const subject = `🚨 SLA Breached — Ticket #${ticket.ticket_number}`
         const html = buildSlaBreachHtml(ticket)
 
-        for (const adminEmail of adminEmails) {
-          await sendEmailWithTemplate({ to: adminEmail, subject, html, ticketId: ticket.id, templateType: 'sla_breach' })
+        for (const recipient of escalationEmails) {
+          await sendEmailWithTemplate({ to: recipient, subject, html, ticketId: ticket.id, templateType: 'sla_breach' })
         }
 
         await supabase.from('audit_logs').insert({
@@ -153,8 +157,8 @@ export async function POST(request: NextRequest) {
         const subject = `⚠️ SLA Warning — Ticket #${ticket.ticket_number}`
         const html = buildSlaWarningHtml(ticket, hoursRemaining)
 
-        for (const adminEmail of adminEmails) {
-          await sendEmailWithTemplate({ to: adminEmail, subject, html, ticketId: ticket.id, templateType: 'sla_warning' })
+        for (const recipient of escalationEmails) {
+          await sendEmailWithTemplate({ to: recipient, subject, html, ticketId: ticket.id, templateType: 'sla_warning' })
         }
 
         actions++

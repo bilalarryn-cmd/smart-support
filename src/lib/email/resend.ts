@@ -222,6 +222,50 @@ export async function sendEmailWithTemplate({
   }
 }
 
+/**
+ * Send a copy of a ticket notification to the support team (admins and/or
+ * agents). Used so admins and agents have visibility into customer-facing
+ * emails. The acting user (e.g. the agent who replied) is excluded so they
+ * don't receive their own message back.
+ */
+export async function notifyTeam({
+  subject,
+  html,
+  ticketId,
+  templateType,
+  roles = ['admin', 'agent'],
+  excludeUserId,
+}: {
+  subject: string
+  html: string
+  ticketId?: string
+  templateType: string
+  roles?: ('admin' | 'agent')[]
+  excludeUserId?: string
+}): Promise<void> {
+  const db = createAdminClient()
+  const { data: members } = await db
+    .from('user_profiles')
+    .select('id, full_name')
+    .in('role', roles)
+    .eq('is_active', true)
+
+  for (const member of members ?? []) {
+    if (excludeUserId && member.id === excludeUserId) continue
+    const { data: authUser } = await db.auth.admin.getUserById(member.id)
+    const email = authUser.user?.email
+    if (!email) continue
+    await sendEmailWithTemplate({
+      to: email,
+      toName: (member as { full_name?: string }).full_name,
+      subject: `[Team Copy] ${subject}`,
+      html,
+      ticketId,
+      templateType: `${templateType}_team`,
+    })
+  }
+}
+
 export function buildAgentReplyHtml(ticket: Ticket, replyContent: string, agentName: string): string {
   return baseTemplate(`
     <h2 style="color:#1e40af;margin:0 0 8px">New reply on your ticket</h2>
