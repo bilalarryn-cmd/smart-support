@@ -180,6 +180,7 @@ export interface AnalyticsData {
   ticketsByStatus: { status: string; count: number }[]
   ticketsByPriority: { priority: string; count: number }[]
   ticketsByCategory: { category: string; count: number }[]
+  ticketsByCountry: { country: string; count: number }[]
   agentPerformance: {
     agent_id: string
     agent_name: string

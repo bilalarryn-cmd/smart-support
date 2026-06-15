@@ -124,6 +124,64 @@ export default function AdminSettingsPage() {
         </Card>
 
         <Card>
+          <CardHeader><CardTitle>Email Provider Settings</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <div>
+                <p className="font-medium text-slate-700">Provider</p>
+                <p className="text-xs text-slate-400">Email delivery service</p>
+              </div>
+              <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">Resend</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <div>
+                <p className="font-medium text-slate-700">API Key</p>
+                <p className="text-xs text-slate-400">Resend API Key (set in .env)</p>
+              </div>
+              <span className={`text-xs font-mono px-2 py-1 rounded-full ${process.env.RESEND_API_KEY ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                {process.env.RESEND_API_KEY ? '✅ Configured' : '❌ Missing'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <div>
+                <p className="font-medium text-slate-700">From Address</p>
+                <p className="text-xs text-slate-400">Sender email for all notifications</p>
+              </div>
+              <span className="text-xs font-mono text-slate-600">support@smartsupport.app</span>
+            </div>
+            <p className="text-xs text-slate-400 pt-1">To change provider or API key, update environment variables in Vercel dashboard.</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Storage Settings</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <div>
+                <p className="font-medium text-slate-700">Provider</p>
+                <p className="text-xs text-slate-400">File attachment storage</p>
+              </div>
+              <span className="text-sm font-semibold text-green-600 bg-green-50 px-3 py-1 rounded-full">Supabase Storage</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <div>
+                <p className="font-medium text-slate-700">Bucket</p>
+                <p className="text-xs text-slate-400">Attachment storage bucket name</p>
+              </div>
+              <span className="text-xs font-mono text-slate-600">attachments</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <div>
+                <p className="font-medium text-slate-700">Max File Size</p>
+                <p className="text-xs text-slate-400">Per attachment upload limit</p>
+              </div>
+              <span className="text-xs font-mono text-slate-600">10 MB</span>
+            </div>
+            <p className="text-xs text-slate-400 pt-1">Storage is managed via Supabase dashboard. Ensure the "attachments" bucket is set to public.</p>
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader><CardTitle>Environment Info</CardTitle></CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex justify-between py-2 border-b border-slate-100">

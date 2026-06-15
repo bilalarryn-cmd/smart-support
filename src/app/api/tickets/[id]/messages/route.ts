@@ -49,8 +49,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Send email to customer when agent/admin replies
+  // Audit log for agent reply
   const senderRole = (user.user_metadata?.role as string) ?? 'customer'
+  if (senderRole !== 'customer' && !body.is_internal) {
+    await db.from('audit_logs').insert({
+      user_id: user.id,
+      action: 'agent.reply_added',
+      entity_type: 'ticket',
+      entity_id: id,
+      new_values: { message_id: data.id, content: body.content.slice(0, 100) },
+    })
+  }
+
+  // Send email to customer when agent/admin replies
   if (senderRole !== 'customer' && !body.is_internal) {
     const { data: ticket } = await db
       .from('tickets')

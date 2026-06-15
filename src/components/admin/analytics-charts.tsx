@@ -102,6 +102,23 @@ export function AnalyticsCharts({ data }: Props) {
         </Card>
       </div>
 
+      {/* Tickets by Country */}
+      {data.ticketsByCountry.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Tickets by Country</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={Math.max(180, data.ticketsByCountry.length * 36)}>
+              <BarChart data={data.ticketsByCountry.map(d => ({ name: d.country, count: d.count }))} layout="vertical">
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} width={45} />
+                <Tooltip contentStyle={{ borderRadius: '12px', fontSize: 12 }} />
+                <Bar dataKey="count" fill="#8B5CF6" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Agent Performance */}
       {data.agentPerformance.length > 0 && (
         <Card>

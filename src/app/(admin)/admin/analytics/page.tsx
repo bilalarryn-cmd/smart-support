@@ -76,6 +76,12 @@ export default async function AdminAnalyticsPage() {
     return { agent_id: a.id, agent_name: a.full_name, assigned: assigned.length, resolved: agentResolved.length, avg_response_hours: Math.round(avgResp * 10) / 10 }
   })
 
+  // By country
+  const countryCounts: Record<string, number> = {}
+  tickets.forEach((t: { country_code: string | null }) => {
+    if (t.country_code) countryCounts[t.country_code] = (countryCounts[t.country_code] ?? 0) + 1
+  })
+
   const emailStats = {
     total: emails.length,
     sent: emails.filter((e: { status: string }) => e.status === 'sent').length,
@@ -94,6 +100,7 @@ export default async function AdminAnalyticsPage() {
     ticketsByStatus: Object.entries(statusCounts).map(([status, count]) => ({ status, count })),
     ticketsByPriority: Object.entries(priorityCounts).map(([priority, count]) => ({ priority, count })),
     ticketsByCategory: Object.entries(categoryCounts).map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count).slice(0, 8),
+    ticketsByCountry: Object.entries(countryCounts).map(([country, count]) => ({ country, count })).sort((a, b) => b.count - a.count).slice(0, 10),
     agentPerformance,
     emailStats,
     ticketsOverTime,

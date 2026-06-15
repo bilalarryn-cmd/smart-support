@@ -28,8 +28,17 @@ export function SlaEscalationActions({ ticketId, currentPriority, agents }: Prop
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+
+    if (!res.ok) { setSaving(false); toast.error('Failed to escalate ticket'); return }
+
+    // Log SLA escalation
+    await fetch(`/api/tickets/${ticketId}/audit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'sla.escalated', new_values: { priority, assigned_agent_id: agentId || null } }),
+    })
+
     setSaving(false)
-    if (!res.ok) { toast.error('Failed to escalate ticket'); return }
     toast.success('Ticket escalated successfully')
     window.location.reload()
   }
