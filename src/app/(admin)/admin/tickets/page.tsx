@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Search, X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,42 +29,26 @@ export default function AdminTicketsPage() {
   const [countryFilter, setCountryFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const supabase = createClient()
 
   const load = useCallback(async () => {
-    let q = supabase
-      .from('tickets')
-      .select('*, customer:user_profiles!customer_id(*), assigned_agent:user_profiles!assigned_agent_id(*), category:ticket_categories(*)')
-      .order('created_at', { ascending: false })
-      .limit(200)
+    const params = new URLSearchParams()
+    if (statusFilter !== 'all') params.set('status', statusFilter)
+    if (priorityFilter !== 'all') params.set('priority', priorityFilter)
+    if (categoryFilter !== 'all') params.set('category_id', categoryFilter)
+    if (agentFilter !== 'all') params.set('agent_id', agentFilter)
+    if (countryFilter !== 'all') params.set('country', countryFilter)
+    if (search) params.set('search', search)
+    if (dateFrom) params.set('date_from', dateFrom)
+    if (dateTo) params.set('date_to', dateTo)
 
-    if (statusFilter !== 'all') q = q.eq('status', statusFilter)
-    if (priorityFilter !== 'all') q = q.eq('priority', priorityFilter)
-    if (categoryFilter !== 'all') q = q.eq('category_id', categoryFilter)
-    if (agentFilter === 'unassigned') q = q.is('assigned_agent_id', null)
-    else if (agentFilter !== 'all') q = q.eq('assigned_agent_id', agentFilter)
-    if (countryFilter !== 'all') q = q.eq('country_code', countryFilter)
-    if (search) q = q.ilike('subject', `%${search}%`)
-    const effectiveFrom = dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo) ? dateTo : dateFrom
-    const effectiveTo   = dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo) ? dateFrom : dateTo
-    if (effectiveFrom) q = q.gte('created_at', new Date(effectiveFrom).toISOString())
-    if (effectiveTo) {
-      const end = new Date(effectiveTo)
-      end.setHours(23, 59, 59, 999)
-      q = q.lte('created_at', end.toISOString())
-    }
+    const res = await fetch(`/api/admin/tickets?${params.toString()}`)
+    if (!res.ok) { setLoading(false); return }
+    const data = await res.json()
 
-    const [ticketsRes, catsRes, agentsRes, slaRes] = await Promise.all([
-      q,
-      supabase.from('ticket_categories').select('*').eq('is_active', true),
-      supabase.from('user_profiles').select('*').eq('role', 'agent'),
-      supabase.from('sla_rules').select('*').eq('is_active', true),
-    ])
-
-    setTickets((ticketsRes.data ?? []) as (Ticket & { customer?: UserProfile; assigned_agent?: UserProfile; category?: TicketCategory })[])
-    setCategories((catsRes.data ?? []) as TicketCategory[])
-    setAgents((agentsRes.data ?? []) as UserProfile[])
-    setSlaRules((slaRes.data ?? []) as SlaRule[])
+    setTickets(data.tickets as (Ticket & { customer?: UserProfile; assigned_agent?: UserProfile; category?: TicketCategory })[])
+    setCategories(data.categories as TicketCategory[])
+    setAgents(data.agents as UserProfile[])
+    setSlaRules(data.slaRules as SlaRule[])
     setLoading(false)
   }, [search, statusFilter, priorityFilter, categoryFilter, agentFilter, countryFilter, dateFrom, dateTo])
 
