@@ -184,12 +184,8 @@ export default function CreateTicketPage() {
       setUploading(false)
     }
 
-    // Send confirmation email via API
-    await fetch('/api/tickets/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketId: ticket.id, type: 'created' }),
-    }).catch(() => null)
+    // NOTE: The confirmation email is already sent server-side by POST /api/tickets.
+    // Do not send it again here, or the customer receives a duplicate.
 
     // Audit log
     await supabase.from('audit_logs').insert({
