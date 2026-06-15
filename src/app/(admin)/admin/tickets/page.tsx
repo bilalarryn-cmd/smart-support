@@ -46,9 +46,11 @@ export default function AdminTicketsPage() {
     else if (agentFilter !== 'all') q = q.eq('assigned_agent_id', agentFilter)
     if (countryFilter !== 'all') q = q.eq('country_code', countryFilter)
     if (search) q = q.ilike('subject', `%${search}%`)
-    if (dateFrom) q = q.gte('created_at', new Date(dateFrom).toISOString())
-    if (dateTo) {
-      const end = new Date(dateTo)
+    const effectiveFrom = dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo) ? dateTo : dateFrom
+    const effectiveTo   = dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo) ? dateFrom : dateTo
+    if (effectiveFrom) q = q.gte('created_at', new Date(effectiveFrom).toISOString())
+    if (effectiveTo) {
+      const end = new Date(effectiveTo)
       end.setHours(23, 59, 59, 999)
       q = q.lte('created_at', end.toISOString())
     }
