@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/utils'
 import type { UserProfile } from '@/types'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface TopbarProps {
   profile: UserProfile | null
@@ -47,10 +48,13 @@ export function Topbar({ profile, title }: TopbarProps) {
 
       {/* Right */}
       <div className="flex items-center gap-3 shrink-0">
-        <button className="relative p-2 rounded-[10px] hover:bg-[#f0f4ff] text-[#666666] hover:text-[#1E63FF] transition-colors">
+        <Link
+          href={profile?.role === 'customer' ? '/notifications' : profile?.role === 'agent' ? '/agent/assigned' : '/admin/audit-logs'}
+          className="relative p-2 rounded-[10px] hover:bg-[#f0f4ff] text-[#666666] hover:text-[#1E63FF] transition-colors inline-flex"
+        >
           <Bell className="h-5 w-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EF4444] rounded-full" />
-        </button>
+        </Link>
 
         <div className="flex items-center gap-2.5 pl-3 border-l border-[#E5E7EB]">
           <Avatar className="h-8 w-8 ring-2 ring-[#E5E7EB]">
