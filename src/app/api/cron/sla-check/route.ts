@@ -115,14 +115,8 @@ export async function POST(request: NextRequest) {
       const isBreached = now > dueAt
       const isWarning = !isBreached && percentage >= slaRule.warning_threshold
 
-      // Get agent + admin emails for notifications
-      let agentEmail: string | null = null
-      let adminEmails: string[] = []
-
-      if (ticket.assigned_agent_id) {
-        const { data: agentAuth } = await supabase.auth.admin.getUserById(ticket.assigned_agent_id)
-        agentEmail = agentAuth.user?.email ?? null
-      }
+      // SLA escalations go to admins only — not to the assigned agent.
+      const adminEmails: string[] = []
 
       const { data: admins } = await supabase.from('user_profiles').select('id').eq('role', 'admin').eq('is_active', true)
       for (const admin of (admins ?? [])) {
@@ -137,9 +131,6 @@ export async function POST(request: NextRequest) {
         const subject = `🚨 SLA Breached — Ticket #${ticket.ticket_number}`
         const html = buildSlaBreachHtml(ticket)
 
-        if (agentEmail) {
-          await sendEmailWithTemplate({ to: agentEmail, subject, html, ticketId: ticket.id, templateType: 'sla_breach' })
-        }
         for (const adminEmail of adminEmails) {
           await sendEmailWithTemplate({ to: adminEmail, subject, html, ticketId: ticket.id, templateType: 'sla_breach' })
         }
@@ -162,9 +153,6 @@ export async function POST(request: NextRequest) {
         const subject = `⚠️ SLA Warning — Ticket #${ticket.ticket_number}`
         const html = buildSlaWarningHtml(ticket, hoursRemaining)
 
-        if (agentEmail) {
-          await sendEmailWithTemplate({ to: agentEmail, subject, html, ticketId: ticket.id, templateType: 'sla_warning' })
-        }
         for (const adminEmail of adminEmails) {
           await sendEmailWithTemplate({ to: adminEmail, subject, html, ticketId: ticket.id, templateType: 'sla_warning' })
         }
