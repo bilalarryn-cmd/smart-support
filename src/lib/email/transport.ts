@@ -71,7 +71,13 @@ export async function deliverEmail({
         subject,
         html,
         text,
-        headers: { 'X-Entity-Ref-ID': `smart-support-${Date.now()}` },
+        headers: {
+          'X-Entity-Ref-ID': `smart-support-${Date.now()}`,
+          // Deliverability signals that reduce spam classification.
+          'List-Unsubscribe': `<mailto:${GMAIL_USER}?subject=unsubscribe>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          'X-Priority': '3',
+        },
       })
       return { id: info.messageId }
     } catch (err) {
