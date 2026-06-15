@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { redirect } from 'next/navigation'
 import { Mail, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,13 +23,15 @@ export default async function AdminEmailLogsPage() {
   const bounced = all.filter(l => l.status === 'bounced').length
 
   const templateLabels: Record<string, string> = {
-    ticket_created: 'Ticket Created',
-    agent_reply: 'Agent Reply',
-    status_change: 'Status Change',
-    sla_warning: 'SLA Warning',
-    sla_breach: 'SLA Breach',
-    ticket_closed: 'Ticket Closed',
-    customer_reply: 'Customer Reply',
+    ticket_created:    'Ticket Created',
+    agent_reply:       'Agent Reply',
+    status_change:     'Status Change',
+    sla_warning:       'SLA Warning',
+    sla_breach:        'SLA Breach',
+    ticket_closed:     'Ticket Closed',
+    ticket_closed_auto:'Auto Closed',
+    ticket_resolved:   'Ticket Resolved',
+    customer_reply:    'Customer Reply',
   }
 
   return (

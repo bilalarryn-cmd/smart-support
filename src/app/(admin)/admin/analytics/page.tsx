@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { redirect } from 'next/navigation'
 import { BarChart3, TrendingUp, Clock, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
@@ -25,7 +24,7 @@ export default async function AdminAnalyticsPage() {
   const open = tickets.filter((t: { status: string }) => ['new', 'open'].includes(t.status)).length
   const resolved = tickets.filter((t: { status: string }) => t.status === 'resolved').length
   const closed = tickets.filter((t: { status: string }) => t.status === 'closed').length
-  const highPriority = tickets.filter((t: { priority: string }) => t.priority === 'high').length
+  const highPriority = tickets.filter((t: { priority: string }) => t.priority === 'high' || t.priority === 'critical').length
   const slaBreaches = tickets.filter((t: { sla_breached: boolean }) => t.sla_breached).length
 
   const withResponse = tickets.filter((t: { first_response_at: string | null; created_at: string }) => t.first_response_at)
@@ -113,8 +112,8 @@ export default async function AdminAnalyticsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <StatCard title="Total Tickets" value={total} icon={BarChart3} color="blue" />
         <StatCard title="Open" value={open} icon={TrendingUp} color="amber" />
-        <StatCard title="SLA Breaches" value={slaBreaches} icon={Clock} color="red" />
-        <StatCard title="Avg Response" value={`${avgResponseHours.toFixed(1)}h`} icon={Users} color="green" />
+        <StatCard title="High/Critical" value={highPriority} icon={Clock} color="red" />
+        <StatCard title="SLA Breaches" value={slaBreaches} icon={Users} color="red" />
       </div>
 
       <AnalyticsCharts data={analyticsData} />

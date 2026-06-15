@@ -1,15 +1,12 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { redirect } from 'next/navigation'
 import { ClipboardList } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDateTime } from '@/lib/utils'
-import type { AuditLog, UserProfile } from '@/types'
+import type { AuditLog } from '@/types'
 
 export default async function AdminAuditLogsPage() {
   const supabase = createAdminClient()
-  
-  
 
   const { data: logs } = await supabase
     .from('audit_logs')
@@ -19,30 +16,35 @@ export default async function AdminAuditLogsPage() {
 
   const all = (logs ?? []) as (AuditLog & { user?: { full_name: string; role: string } })[]
 
+  // Must match actual action strings written throughout the codebase
   const actionColors: Record<string, string> = {
-    'ticket.created':     'bg-blue-100 text-blue-700',
-    'ticket.updated':     'bg-amber-100 text-amber-700',
-    'ticket.assigned':    'bg-purple-100 text-purple-700',
-    'ticket.closed':      'bg-slate-100 text-slate-700',
-    'ticket.resolved':    'bg-emerald-100 text-emerald-700',
-    'ticket.reopened':    'bg-cyan-100 text-cyan-700',
-    'status.changed':     'bg-orange-100 text-orange-700',
-    'agent.reply_added':  'bg-green-100 text-green-700',
-    'sla.escalated':      'bg-red-100 text-red-700',
-    'email.sent':         'bg-indigo-100 text-indigo-700',
+    'ticket.created':            'bg-blue-100 text-blue-700',
+    'ticket.status_changed':     'bg-amber-100 text-amber-700',
+    'ticket.assigned':           'bg-purple-100 text-purple-700',
+    'ticket.closed':             'bg-slate-100 text-slate-700',
+    'ticket.resolved':           'bg-emerald-100 text-emerald-700',
+    'ticket.auto_closed':        'bg-slate-100 text-slate-600',
+    'ticket.message_sent':       'bg-green-100 text-green-700',
+    'ticket.note_added':         'bg-amber-100 text-amber-800',
+    'ticket.sla_breached':       'bg-red-100 text-red-700',
+    'ticket.duplicate_detected': 'bg-orange-100 text-orange-700',
+    'agent.reply_added':         'bg-green-100 text-green-700',
+    'ticket.sla_warned':         'bg-yellow-100 text-yellow-700',
   }
 
   const actionLabels: Record<string, string> = {
-    'ticket.created':     'Ticket Created',
-    'ticket.updated':     'Ticket Updated',
-    'ticket.assigned':    'Ticket Assigned',
-    'ticket.closed':      'Ticket Closed',
-    'ticket.resolved':    'Ticket Resolved',
-    'ticket.reopened':    'Ticket Reopened',
-    'status.changed':     'Status Changed',
-    'agent.reply_added':  'Agent Reply Added',
-    'sla.escalated':      'SLA Escalated',
-    'email.sent':         'Email Sent',
+    'ticket.created':            'Ticket Created',
+    'ticket.status_changed':     'Status Changed',
+    'ticket.assigned':           'Ticket Assigned',
+    'ticket.closed':             'Ticket Closed',
+    'ticket.resolved':           'Ticket Resolved',
+    'ticket.auto_closed':        'Auto Closed',
+    'ticket.message_sent':       'Reply Sent',
+    'ticket.note_added':         'Note Added',
+    'ticket.sla_breached':       'SLA Breached',
+    'ticket.duplicate_detected': 'Duplicate Detected',
+    'agent.reply_added':         'Agent Reply',
+    'ticket.sla_warned':         'SLA Warning',
   }
 
   return (
@@ -66,7 +68,7 @@ export default async function AdminAuditLogsPage() {
                     <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Entity</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Changes</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Details</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -83,14 +85,14 @@ export default async function AdminAuditLogsPage() {
                       </td>
                       <td className="py-3 px-4">
                         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${actionColors[log.action] ?? 'bg-slate-100 text-slate-600'}`}>
-                          {actionLabels[log.action] ?? log.action}
+                          {actionLabels[log.action] ?? log.action.replace(/\./g, ' › ').replace(/_/g, ' ')}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-slate-600 text-xs capitalize">{log.entity_type}</td>
                       <td className="py-3 px-4 text-xs text-slate-500 max-w-xs">
                         {log.new_values ? (
                           <code className="bg-slate-50 px-2 py-1 rounded text-xs block truncate">
-                            {JSON.stringify(log.new_values).slice(0, 80)}
+                            {JSON.stringify(log.new_values).slice(0, 100)}
                           </code>
                         ) : '—'}
                       </td>

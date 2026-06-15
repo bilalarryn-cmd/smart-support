@@ -18,10 +18,17 @@ export function AnalyticsCharts({ data }: Props) {
     value: d.count,
   }))
 
+  const PRIORITY_COLORS: Record<string, string> = {
+    critical: '#7F1D1D',
+    high:     '#EF4444',
+    medium:   '#F59E0B',
+    low:      '#10B981',
+  }
+
   const priorityData = data.ticketsByPriority.map(d => ({
     name: d.priority.charAt(0).toUpperCase() + d.priority.slice(1),
     value: d.count,
-    fill: d.priority === 'high' ? '#EF4444' : d.priority === 'medium' ? '#F59E0B' : '#10B981',
+    fill: PRIORITY_COLORS[d.priority] ?? '#94A3B8',
   }))
 
   const categoryData = data.ticketsByCategory.map(d => ({

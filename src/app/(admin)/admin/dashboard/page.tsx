@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { TicketCheck, Users, AlertCircle, CheckCircle, Clock, Mail, Cpu, ArrowRight, Plus, Activity, Timer, Zap } from 'lucide-react'
 import { SetupBanner } from '@/components/admin/setup-banner'
