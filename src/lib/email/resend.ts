@@ -117,19 +117,25 @@ export async function sendTicketCreatedEmail(ticket: Ticket, customer: UserProfi
   `, subject)
 
   try {
+    const db = createAdminClient()
+    const { data: authUser } = await db.auth.admin.getUserById(customer.id)
+    const customerEmail = authUser.user?.email ?? ''
+    if (!customerEmail) return { success: false, error: 'No email found for customer' }
+
+    const toField = `${customer.full_name} <${customerEmail}>`
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
-      to: customer.full_name ? `${customer.full_name} <${(await import('@/lib/supabase/admin')).createAdminClient().auth.admin.getUserById(customer.id).then(r => r.data.user?.email ?? '')}>` : '',
+      to: toField,
       subject,
       html,
     })
 
     const success = !error && !!data?.id
-    await logEmail({ ticketId: ticket.id, recipientEmail: 'customer', recipientName: customer.full_name, subject, templateType: 'ticket_created', status: success ? 'sent' : 'failed', resendMessageId: data?.id, errorMessage: error?.message })
+    await logEmail({ ticketId: ticket.id, recipientEmail: customerEmail, recipientName: customer.full_name, subject, templateType: 'ticket_created', status: success ? 'sent' : 'failed', resendMessageId: data?.id, errorMessage: error?.message })
     return { success, messageId: data?.id }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
-    await logEmail({ ticketId: ticket.id, recipientEmail: 'customer', recipientName: customer.full_name, subject, templateType: 'ticket_created', status: 'failed', errorMessage: msg })
+    await logEmail({ ticketId: ticket.id, recipientEmail: customer.id, recipientName: customer.full_name, subject, templateType: 'ticket_created', status: 'failed', errorMessage: msg })
     return { success: false, error: msg }
   }
 }
