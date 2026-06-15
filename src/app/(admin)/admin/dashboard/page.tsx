@@ -1,7 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { TicketCheck, Users, AlertCircle, CheckCircle, Clock, Mail, Cpu, ArrowRight, Plus, Activity, Timer } from 'lucide-react'
+import { TicketCheck, Users, AlertCircle, CheckCircle, Clock, Mail, Cpu, ArrowRight, Plus, Activity, Timer, Zap } from 'lucide-react'
+import { SetupBanner } from '@/components/admin/setup-banner'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,13 +16,14 @@ export default async function AdminDashboardPage() {
   
   
 
-  const [ticketsRes, usersRes, slaRulesRes, emailRes, autoRes, auditRes] = await Promise.all([
+  const [ticketsRes, usersRes, slaRulesRes, emailRes, autoRes, auditRes, catRes] = await Promise.all([
     supabase.from('tickets').select('*, customer:user_profiles!customer_id(full_name), category:ticket_categories(name, color)').order('created_at', { ascending: false }),
     supabase.from('user_profiles').select('id, role, is_active'),
     supabase.from('sla_rules').select('*').eq('is_active', true),
     supabase.from('email_logs').select('status').gte('sent_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
     supabase.from('automation_jobs').select('*').order('created_at', { ascending: false }).limit(5),
     supabase.from('audit_logs').select('*, user:user_profiles(full_name)').order('created_at', { ascending: false }).limit(8),
+    supabase.from('ticket_categories').select('id').limit(1),
   ])
 
   const tickets = ticketsRes.data ?? []
@@ -51,9 +53,11 @@ export default async function AdminDashboardPage() {
 
   const getSlaRule = (priority: string) => slaRules.find(r => r.priority === priority) ?? null
   const auditLogs = auditRes.data ?? []
+  const needsSetup = (catRes.data ?? []).length === 0
 
   return (
     <div className="animate-slide-in">
+      {needsSetup && <SetupBanner />}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>

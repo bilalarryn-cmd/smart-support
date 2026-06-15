@@ -27,49 +27,41 @@ export default function AgentQueuePage() {
   const [countryFilter, setCountryFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = createClient()
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id)
+    })
+  }, [])
+
   const load = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const params = new URLSearchParams()
+    if (priorityFilter !== 'all') params.set('priority', priorityFilter)
+    if (countryFilter !== 'all') params.set('country', countryFilter)
+    if (search) params.set('search', search)
+    if (dateFrom) params.set('date_from', dateFrom)
+    if (dateTo) params.set('date_to', dateTo)
 
-    const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', user.id).single()
-    setCurrentUser(profile as UserProfile)
-
-    let q = supabase
-      .from('tickets')
-      .select('*, customer:user_profiles!customer_id(*), category:ticket_categories(name, color)')
-      .is('assigned_agent_id', null)
-      .not('status', 'in', '(resolved,closed)')
-      .order('priority', { ascending: false })
-      .order('created_at', { ascending: true })
-
-    if (priorityFilter !== 'all') q = q.eq('priority', priorityFilter)
-    if (countryFilter !== 'all') q = q.eq('country_code', countryFilter)
-    if (search) q = q.ilike('subject', `%${search}%`)
-    if (dateFrom) q = q.gte('created_at', new Date(dateFrom).toISOString())
-    if (dateTo) {
-      const end = new Date(dateTo); end.setHours(23, 59, 59, 999)
-      q = q.lte('created_at', end.toISOString())
-    }
-
-    const [ticketsRes, slaRes] = await Promise.all([
-      q,
-      supabase.from('sla_rules').select('*').eq('is_active', true),
-    ])
-    setTickets((ticketsRes.data ?? []) as (Ticket & { customer?: UserProfile; category?: { name: string; color: string } })[])
-    setSlaRules((slaRes.data ?? []) as SlaRule[])
+    const res = await fetch(`/api/agent/queue?${params}`)
+    if (!res.ok) { setLoading(false); return }
+    const data = await res.json()
+    setTickets(data.tickets as (Ticket & { customer?: UserProfile; category?: { name: string; color: string } })[])
+    setSlaRules(data.slaRules as SlaRule[])
     setLoading(false)
   }, [priorityFilter, countryFilter, dateFrom, dateTo, search])
 
   useEffect(() => { load() }, [load])
 
   const assignToSelf = async (ticketId: string) => {
-    if (!currentUser) return
-    const { error } = await supabase.from('tickets').update({ assigned_agent_id: currentUser.id, status: 'open' }).eq('id', ticketId)
-    if (error) { toast.error('Failed to assign ticket'); return }
-    await supabase.from('ticket_assignments').insert({ ticket_id: ticketId, assigned_to: currentUser.id, assigned_by: currentUser.id })
+    if (!currentUserId) return
+    const res = await fetch(`/api/tickets/${ticketId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assigned_agent_id: currentUserId, status: 'open' }),
+    })
+    if (!res.ok) { toast.error('Failed to assign ticket'); return }
     setTickets(prev => prev.filter(t => t.id !== ticketId))
     toast.success('Ticket assigned to you!')
   }
